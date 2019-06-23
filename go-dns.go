@@ -71,7 +71,7 @@ func createForwardDomainHandlerFunc() dns.HandlerFunc {
 
 func createReverseHandlerFunc() dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
-		if len(r.Question) == 1 {
+		if len(r.Question) > 1 {
 			question := r.Question[0]
 			if question.Qtype == dns.TypePTR {
 				msg := new(dns.Msg)
@@ -107,6 +107,19 @@ func createServeMux(dnsClient *dns.Client) *dns.ServeMux {
 	return dnsServeMux
 }
 
+func runDNSServer(dnsServeMux *dns.ServeMux, listenAddrAndPort, net string) {
+	srv := &dns.Server{
+		Handler: dnsServeMux,
+		Addr:    listenAddrAndPort,
+		Net:     net}
+
+	logger.Printf("starting %v server on %v", net, listenAddrAndPort)
+
+	if err := srv.ListenAndServe(); err != nil {
+		logger.Fatalf("Failed to set udp listener %s\n", err.Error())
+	}
+}
+
 func main() {
 	logger.Printf("begin main")
 
@@ -122,34 +135,11 @@ func main() {
 
 	dnsServeMux := createServeMux(dnsClient)
 
-	go func() {
-		srv := &dns.Server{
-			Handler: dnsServeMux,
-			Addr:    listenAddrAndPort,
-			Net:     "udp"}
-
-		logger.Printf("starting udp server on %v", listenAddrAndPort)
-
-		if err := srv.ListenAndServe(); err != nil {
-			log.Fatalf("Failed to set udp listener %s\n", err.Error())
-		}
-	}()
-
-	go func() {
-		srv := &dns.Server{
-			Handler: dnsServeMux,
-			Addr:    listenAddrAndPort,
-			Net:     "tcp"}
-
-		logger.Printf("starting tcp server on %v", listenAddrAndPort)
-
-		if err := srv.ListenAndServe(); err != nil {
-			log.Fatalf("Failed to set udp listener %s\n", err.Error())
-		}
-	}()
+	go runDNSServer(dnsServeMux, listenAddrAndPort, "udp")
+	go runDNSServer(dnsServeMux, listenAddrAndPort, "tcp")
 
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	s := <-sig
-	log.Fatalf("Signal (%v) received, stopping\n", s)
+	logger.Fatalf("Signal (%v) received, stopping\n", s)
 }
