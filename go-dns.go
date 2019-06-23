@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"os/signal"
@@ -12,7 +13,10 @@ import (
 
 var logger = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lmicroseconds)
 
-var remoteHostAndPort = net.JoinHostPort("8.8.8.8", "53")
+var remoteHostsAndPorts = []string{
+	net.JoinHostPort("8.8.8.8", "53"),
+	net.JoinHostPort("8.8.4.4", "53"),
+}
 
 const forwardDomain = "domain."
 
@@ -28,13 +32,18 @@ var reverseAddressToName = map[string]string{
 	"100.1.168.192.in-addr.arpa.": "raspberrypi.domain.",
 }
 
+func pickRandomRemoteHostAndPort() string {
+	return remoteHostsAndPorts[rand.Intn(len(remoteHostsAndPorts))]
+}
+
 func createProxyHandlerFunc(dnsClient *dns.Client) dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		originalID := r.Id
 		r.Id = dns.Id()
+		remoteHostAndPort := pickRandomRemoteHostAndPort()
 		resp, _, err := dnsClient.Exchange(r, remoteHostAndPort)
 		if err != nil {
-			logger.Printf("dnsClient exchange error = %v", err.Error())
+			logger.Printf("dnsClient exchange remoteHostAndPort = %v error = %v", remoteHostAndPort, err.Error())
 			r.Id = originalID
 			dns.HandleFailed(w, r)
 		} else {
@@ -131,7 +140,7 @@ func main() {
 
 	dnsClient := new(dns.Client)
 
-	logger.Printf("created dnsClient remoteHostAndPort = %v", remoteHostAndPort)
+	logger.Printf("created dnsClient remoteHostsAndPorts = %v", remoteHostsAndPorts)
 
 	dnsServeMux := createServeMux(dnsClient)
 
