@@ -80,7 +80,7 @@ func createForwardDomainHandlerFunc() dns.HandlerFunc {
 
 func createReverseHandlerFunc() dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
-		if len(r.Question) > 1 {
+		if len(r.Question) > 0 {
 			question := r.Question[0]
 			if question.Qtype == dns.TypePTR {
 				msg := new(dns.Msg)
