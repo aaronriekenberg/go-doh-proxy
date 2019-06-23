@@ -1,0 +1,7 @@
+go-dns
+*.swp
+logs/lock
+logs/state
+logs/*.s
+logs/*.u
+logs/current
