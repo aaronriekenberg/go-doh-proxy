@@ -28,11 +28,8 @@ var reverseAddressToName = map[string]string{
 	"100.1.168.192.in-addr.arpa.": "raspberrypi.domain.",
 }
 
-func createServeMux(dnsClient *dns.Client) *dns.ServeMux {
-
-	dnsServeMux := dns.NewServeMux()
-
-	dnsServeMux.HandleFunc(".", func(w dns.ResponseWriter, r *dns.Msg) {
+func createProxyHandlerFunc(dnsClient *dns.Client) dns.HandlerFunc {
+	return func(w dns.ResponseWriter, r *dns.Msg) {
 		originalID := r.Id
 		r.Id = dns.Id()
 		resp, _, err := dnsClient.Exchange(r, remoteHostAndPort)
@@ -44,10 +41,12 @@ func createServeMux(dnsClient *dns.Client) *dns.ServeMux {
 			resp.Id = originalID
 			w.WriteMsg(resp)
 		}
-	})
+	}
+}
 
-	dnsServeMux.HandleFunc(forwardDomain, func(w dns.ResponseWriter, r *dns.Msg) {
-		if len(r.Question) == 1 {
+func createForwardDomainHandlerFunc() dns.HandlerFunc {
+	return func(w dns.ResponseWriter, r *dns.Msg) {
+		if len(r.Question) > 0 {
 			question := r.Question[0]
 			if question.Qtype == dns.TypeA {
 				msg := new(dns.Msg)
@@ -67,9 +66,11 @@ func createServeMux(dnsClient *dns.Client) *dns.ServeMux {
 			}
 		}
 		dns.HandleFailed(w, r)
-	})
+	}
+}
 
-	dnsServeMux.HandleFunc(reverseDomain, func(w dns.ResponseWriter, r *dns.Msg) {
+func createReverseHandlerFunc() dns.HandlerFunc {
+	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) == 1 {
 			question := r.Question[0]
 			if question.Qtype == dns.TypePTR {
@@ -90,7 +91,18 @@ func createServeMux(dnsClient *dns.Client) *dns.ServeMux {
 			}
 		}
 		dns.HandleFailed(w, r)
-	})
+	}
+}
+
+func createServeMux(dnsClient *dns.Client) *dns.ServeMux {
+
+	dnsServeMux := dns.NewServeMux()
+
+	dnsServeMux.HandleFunc(".", createProxyHandlerFunc(dnsClient))
+
+	dnsServeMux.HandleFunc(forwardDomain, createForwardDomainHandlerFunc())
+
+	dnsServeMux.HandleFunc(reverseDomain, createReverseHandlerFunc())
 
 	return dnsServeMux
 }
