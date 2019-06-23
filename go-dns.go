@@ -28,27 +28,16 @@ var reverseAddressToName = map[string]string{
 	"100.1.168.192.in-addr.arpa.": "raspberrypi.domain.",
 }
 
-func main() {
-	logger.Printf("begin main")
-
-	listenAddrAndPort := ":10053"
-	if len(os.Args) == 2 {
-		listenAddrAndPort = os.Args[1]
-	}
-	logger.Printf("listenAddrAndPort = %v", listenAddrAndPort)
-
-	client := new(dns.Client)
-
-	logger.Printf("created client remoteHostAndPort = %v", remoteHostAndPort)
+func createServeMux(dnsClient *dns.Client) *dns.ServeMux {
 
 	dnsServeMux := dns.NewServeMux()
 
 	dnsServeMux.HandleFunc(".", func(w dns.ResponseWriter, r *dns.Msg) {
 		originalID := r.Id
 		r.Id = dns.Id()
-		resp, _, err := client.Exchange(r, remoteHostAndPort)
+		resp, _, err := dnsClient.Exchange(r, remoteHostAndPort)
 		if err != nil {
-			logger.Printf("client exchange error = %v", err.Error())
+			logger.Printf("dnsClient exchange error = %v", err.Error())
 			r.Id = originalID
 			dns.HandleFailed(w, r)
 		} else {
@@ -102,6 +91,24 @@ func main() {
 		}
 		dns.HandleFailed(w, r)
 	})
+
+	return dnsServeMux
+}
+
+func main() {
+	logger.Printf("begin main")
+
+	listenAddrAndPort := ":10053"
+	if len(os.Args) == 2 {
+		listenAddrAndPort = os.Args[1]
+	}
+	logger.Printf("listenAddrAndPort = %v", listenAddrAndPort)
+
+	dnsClient := new(dns.Client)
+
+	logger.Printf("created dnsClient remoteHostAndPort = %v", remoteHostAndPort)
+
+	dnsServeMux := createServeMux(dnsClient)
 
 	go func() {
 		srv := &dns.Server{
