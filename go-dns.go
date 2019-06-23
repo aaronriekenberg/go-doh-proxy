@@ -31,6 +31,12 @@ var reverseAddressToName = map[string]string{
 func main() {
 	logger.Printf("begin main")
 
+	listenAddrAndPort := ":10053"
+	if len(os.Args) == 2 {
+		listenAddrAndPort = os.Args[1]
+	}
+	logger.Printf("listenAddrAndPort = %v", listenAddrAndPort)
+
 	client := new(dns.Client)
 
 	logger.Printf("created client remoteHostAndPort = %v", remoteHostAndPort)
@@ -92,8 +98,6 @@ func main() {
 		}
 		dns.HandleFailed(w, r)
 	})
-
-	listenAddrAndPort := ":10053"
 
 	go func() {
 		srv := &dns.Server{
