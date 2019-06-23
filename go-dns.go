@@ -44,11 +44,15 @@ func main() {
 	dnsServeMux := dns.NewServeMux()
 
 	dnsServeMux.HandleFunc(".", func(w dns.ResponseWriter, r *dns.Msg) {
+		originalID := r.Id
+		r.Id = dns.Id()
 		resp, _, err := client.Exchange(r, remoteHostAndPort)
 		if err != nil {
 			logger.Printf("client exchange error = %v", err.Error())
+			r.Id = originalID
 			dns.HandleFailed(w, r)
 		} else {
+			resp.Id = originalID
 			w.WriteMsg(resp)
 		}
 	})
