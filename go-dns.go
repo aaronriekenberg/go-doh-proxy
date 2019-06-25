@@ -56,7 +56,7 @@ func createProxyHandlerFunc(dnsClient *dns.Client) dns.HandlerFunc {
 func createForwardDomainHandlerFunc() dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) > 0 {
-			question := r.Question[0]
+			question := &(r.Question[0])
 			if question.Qtype == dns.TypeA {
 				msg := new(dns.Msg)
 				address, ok := forwardNamesToAddresses[question.Name]
@@ -81,7 +81,7 @@ func createForwardDomainHandlerFunc() dns.HandlerFunc {
 func createReverseHandlerFunc() dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) > 0 {
-			question := r.Question[0]
+			question := &(r.Question[0])
 			if question.Qtype == dns.TypePTR {
 				msg := new(dns.Msg)
 				name, ok := reverseAddressToName[question.Name]
