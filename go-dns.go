@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -8,40 +10,67 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/kr/pretty"
 	"github.com/miekg/dns"
 )
 
 var logger = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lmicroseconds)
 
-var remoteHostsAndPorts = []string{
-	net.JoinHostPort("8.8.8.8", "53"),
-	net.JoinHostPort("8.8.4.4", "53"),
+type hostAndPort struct {
+	Host string `json:"host"`
+	Port string `json:"port"`
 }
 
-const forwardDomain = "domain."
-
-var forwardNamesToAddresses = map[string]net.IP{
-	"apu2.domain.":        net.ParseIP("192.168.1.1"),
-	"raspberrypi.domain.": net.ParseIP("192.168.1.100"),
+func (hostAndPort hostAndPort) JoinHostPort() string {
+	return net.JoinHostPort(hostAndPort.Host, hostAndPort.Port)
 }
 
-const reverseDomain = "1.168.192.in-addr.arpa."
-
-var reverseAddressToName = map[string]string{
-	"1.1.168.192.in-addr.arpa.":   "apu2.domain.",
-	"100.1.168.192.in-addr.arpa.": "raspberrypi.domain.",
+type forwardNameToAddress struct {
+	Name      string `json:"name"`
+	IPAddress string `json:"ipAddress"`
 }
 
-func pickRandomRemoteHostAndPort() string {
-	return remoteHostsAndPorts[rand.Intn(len(remoteHostsAndPorts))]
+type reverseAddressToName struct {
+	ReverseAddress string `json:"reverseAddress"`
+	Name           string `json:"name"`
 }
 
-func createProxyHandlerFunc(dnsClient *dns.Client) dns.HandlerFunc {
+type configuration struct {
+	ListenAddress           hostAndPort            `json:"listenAddress"`
+	RemoteAddressesAndPorts []hostAndPort          `json:"remoteAddressesAndPorts"`
+	ForwardDomain           string                 `json:"forwardDomain"`
+	ForwardNamesToAddresses []forwardNameToAddress `json:"forwardNamesToAddresses"`
+	ReverseDomain           string                 `json:"reverseDomain"`
+	ReverseAddressesToNames []reverseAddressToName `json:"reverseAddressesToNames"`
+}
+
+type DNSProxy struct {
+	configuration *configuration
+	dnsClient     *dns.Client
+}
+
+func NewDNSProxy(configuration *configuration) *DNSProxy {
+	return &DNSProxy{
+		configuration: configuration,
+		dnsClient:     new(dns.Client),
+	}
+}
+
+func pickRandomStringSliceEntry(s []string) string {
+	return s[rand.Intn(len(s))]
+}
+
+func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
+	remoteHostAndPortStrings := make([]string, 0, len(dnsProxy.configuration.RemoteAddressesAndPorts))
+	for _, hostAndPort := range dnsProxy.configuration.RemoteAddressesAndPorts {
+		remoteHostAndPortStrings = append(remoteHostAndPortStrings, hostAndPort.JoinHostPort())
+	}
+
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		originalID := r.Id
 		r.Id = dns.Id()
-		remoteHostAndPort := pickRandomRemoteHostAndPort()
-		resp, _, err := dnsClient.Exchange(r, remoteHostAndPort)
+		remoteHostAndPort := pickRandomStringSliceEntry(remoteHostAndPortStrings)
+		resp, _, err := dnsProxy.dnsClient.Exchange(r, remoteHostAndPort)
 		if err != nil {
 			logger.Printf("dnsClient exchange remoteHostAndPort = %v error = %v", remoteHostAndPort, err.Error())
 			r.Id = originalID
@@ -53,7 +82,12 @@ func createProxyHandlerFunc(dnsClient *dns.Client) dns.HandlerFunc {
 	}
 }
 
-func createForwardDomainHandlerFunc() dns.HandlerFunc {
+func (dnsProxy *DNSProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
+	forwardNamesToAddresses := make(map[string]net.IP)
+	for _, forwardNameToAddress := range dnsProxy.configuration.ForwardNamesToAddresses {
+		forwardNamesToAddresses[forwardNameToAddress.Name] = net.ParseIP(forwardNameToAddress.IPAddress)
+	}
+
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) > 0 {
 			question := &(r.Question[0])
@@ -78,13 +112,18 @@ func createForwardDomainHandlerFunc() dns.HandlerFunc {
 	}
 }
 
-func createReverseHandlerFunc() dns.HandlerFunc {
+func (dnsProxy *DNSProxy) createReverseHandlerFunc() dns.HandlerFunc {
+	reverseAddressesToNames := make(map[string]string)
+	for _, reverseAddressToName := range dnsProxy.configuration.ReverseAddressesToNames {
+		reverseAddressesToNames[reverseAddressToName.ReverseAddress] = reverseAddressToName.Name
+	}
+
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) > 0 {
 			question := &(r.Question[0])
 			if question.Qtype == dns.TypePTR {
 				msg := new(dns.Msg)
-				name, ok := reverseAddressToName[question.Name]
+				name, ok := reverseAddressesToNames[question.Name]
 				if !ok {
 					msg.SetRcode(r, dns.RcodeNameError)
 				} else {
@@ -103,24 +142,25 @@ func createReverseHandlerFunc() dns.HandlerFunc {
 	}
 }
 
-func createServeMux(dnsClient *dns.Client) *dns.ServeMux {
+func (dnsProxy *DNSProxy) createServeMux() *dns.ServeMux {
 
 	dnsServeMux := dns.NewServeMux()
 
-	dnsServeMux.HandleFunc(".", createProxyHandlerFunc(dnsClient))
+	dnsServeMux.HandleFunc(".", dnsProxy.createProxyHandlerFunc())
 
-	dnsServeMux.HandleFunc(forwardDomain, createForwardDomainHandlerFunc())
+	dnsServeMux.HandleFunc(dnsProxy.configuration.ForwardDomain, dnsProxy.createForwardDomainHandlerFunc())
 
-	dnsServeMux.HandleFunc(reverseDomain, createReverseHandlerFunc())
+	dnsServeMux.HandleFunc(dnsProxy.configuration.ReverseDomain, dnsProxy.createReverseHandlerFunc())
 
 	return dnsServeMux
 }
 
-func runDNSServer(dnsServeMux *dns.ServeMux, listenAddrAndPort, net string) {
+func (dnsProxy *DNSProxy) runServer(dnsServeMux *dns.ServeMux, listenAddrAndPort, net string) {
 	srv := &dns.Server{
 		Handler: dnsServeMux,
 		Addr:    listenAddrAndPort,
-		Net:     net}
+		Net:     net,
+	}
 
 	logger.Printf("starting %v server on %v", net, listenAddrAndPort)
 
@@ -129,23 +169,42 @@ func runDNSServer(dnsServeMux *dns.ServeMux, listenAddrAndPort, net string) {
 	}
 }
 
-func main() {
-	logger.Printf("begin main")
+func (dnsProxy *DNSProxy) Start() {
+	dnsServeMux := dnsProxy.createServeMux()
 
-	listenAddrAndPort := ":10053"
-	if len(os.Args) == 2 {
-		listenAddrAndPort = os.Args[1]
+	listenAddressAndPort := dnsProxy.configuration.ListenAddress.JoinHostPort()
+
+	go dnsProxy.runServer(dnsServeMux, listenAddressAndPort, "udp")
+	go dnsProxy.runServer(dnsServeMux, listenAddressAndPort, "tcp")
+}
+
+func readConfiguration(configFile string) *configuration {
+	logger.Printf("reading json file %v", configFile)
+
+	source, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		logger.Fatalf("error reading %v: %v", configFile, err.Error())
 	}
-	logger.Printf("listenAddrAndPort = %v", listenAddrAndPort)
 
-	dnsClient := new(dns.Client)
+	var config configuration
+	if err = json.Unmarshal(source, &config); err != nil {
+		logger.Fatalf("error parsing %v: %v", configFile, err.Error())
+	}
 
-	logger.Printf("created dnsClient remoteHostsAndPorts = %v", remoteHostsAndPorts)
+	return &config
+}
 
-	dnsServeMux := createServeMux(dnsClient)
+func main() {
+	if len(os.Args) != 2 {
+		logger.Fatalf("Usage: %v <config json file>", os.Args[0])
+	}
 
-	go runDNSServer(dnsServeMux, listenAddrAndPort, "udp")
-	go runDNSServer(dnsServeMux, listenAddrAndPort, "tcp")
+	configFile := os.Args[1]
+	configuration := readConfiguration(configFile)
+	logger.Printf("configuration:\n%# v", pretty.Formatter(configuration))
+
+	dnsProxy := NewDNSProxy(configuration)
+	dnsProxy.Start()
 
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

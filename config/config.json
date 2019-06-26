@@ -1,0 +1,38 @@
+{
+  "listenAddress": {
+    "host": "",
+    "port": "10053"
+  },
+  "remoteAddressesAndPorts": [
+    {
+      "host": "8.8.8.8",
+      "port": "53"
+    },
+    {
+      "host": "8.8.4.4",
+      "port": "53"
+    }
+  ],
+  "forwardDomain": "domain.",
+  "forwardNamesToAddresses": [
+    {
+      "name": "apu2.domain.",
+      "ipAddress": "192.168.1.1"
+    },
+    {
+      "name": "raspberrypi.domain.",
+      "ipAddress": "192.168.1.100"
+    }
+  ],
+  "reverseDomain": "1.168.192.in-addr.arpa.",
+  "reverseAddressesToNames": [
+    {
+      "reverseAddress": "1.1.168.192.in-addr.arpa.",
+      "name": "apu2.domain."
+    },
+    {
+      "reverseAddress": "100.1.168.192.in-addr.arpa.",
+      "name": "raspberrypi.domain."
+    }
+  ]
+}
