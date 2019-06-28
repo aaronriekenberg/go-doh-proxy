@@ -21,7 +21,7 @@ type hostAndPort struct {
 	Port string `json:"port"`
 }
 
-func (hostAndPort hostAndPort) JoinHostPort() string {
+func (hostAndPort *hostAndPort) JoinHostPort() string {
 	return net.JoinHostPort(hostAndPort.Host, hostAndPort.Port)
 }
 
@@ -165,7 +165,7 @@ func (dnsProxy *DNSProxy) runServer(dnsServeMux *dns.ServeMux, listenAddrAndPort
 	logger.Printf("starting %v server on %v", net, listenAddrAndPort)
 
 	if err := srv.ListenAndServe(); err != nil {
-		logger.Fatalf("Failed to set udp listener %s\n", err.Error())
+		logger.Fatalf("Failed to set %v listener %s\n", net, err.Error())
 	}
 }
 
