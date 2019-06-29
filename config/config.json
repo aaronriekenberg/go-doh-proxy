@@ -34,5 +34,8 @@
       "reverseAddress": "100.1.168.192.in-addr.arpa.",
       "name": "raspberrypi.domain."
     }
-  ]
+  ],
+  "minTTLSeconds": 300,
+  "maxTTLSeconds": 3600,
+  "timerIntervalSeconds": 10
 }
