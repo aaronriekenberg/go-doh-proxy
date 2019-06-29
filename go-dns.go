@@ -158,23 +158,17 @@ func (dnsProxy *DNSProxy) adjustTTL(cacheObject *cacheObject) bool {
 		valid = false
 	}
 
-	var secondsToSubtractFromTTL float64
 	if valid {
-		secondsToSubtractFromTTL = now.Sub(cacheObject.cacheTime).Seconds()
-		if secondsToSubtractFromTTL <= 0 {
-			valid = false
-		}
-	}
+		secondsToSubtractFromTTL := now.Sub(cacheObject.cacheTime).Seconds()
 
-	if valid {
 		m := cacheObject.message
 		adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
-			ttl := rrHeader.Ttl
-			ttl -= uint32(secondsToSubtractFromTTL)
+			ttl := int64(rrHeader.Ttl)
+			ttl -= int64(secondsToSubtractFromTTL)
 			if ttl <= 0 {
 				valid = false
 			} else {
-				rrHeader.Ttl = ttl
+				rrHeader.Ttl = uint32(ttl)
 			}
 		}
 
