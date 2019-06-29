@@ -189,6 +189,25 @@ func (dnsProxy *DNSProxy) adjustTTL(cacheObject *cacheObject) bool {
 	return valid
 }
 
+func (dnsProxy *DNSProxy) cacheResponse(resp *dns.Msg) {
+	if (resp.Rcode == dns.RcodeSuccess) || (resp.Rcode == dns.RcodeNameError) {
+		minTTLSeconds := dnsProxy.getMinTTLSeconds(resp)
+		respQuestionCacheKey := getQuestionCacheKey(resp)
+
+		if (len(respQuestionCacheKey) > 0) && (minTTLSeconds > 0) {
+			ttlDuration := time.Second * time.Duration(minTTLSeconds)
+			now := time.Now()
+			expirationTime := now.Add(ttlDuration)
+			cacheObject := &cacheObject{
+				cacheTime:      now,
+				expirationTime: expirationTime,
+				message:        resp.Copy(),
+			}
+			dnsProxy.cache.Set(respQuestionCacheKey, cacheObject, ttlDuration)
+		}
+	}
+}
+
 func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 	remoteHostAndPortStrings := make([]string, 0, len(dnsProxy.configuration.RemoteAddressesAndPorts))
 	for _, hostAndPort := range dnsProxy.configuration.RemoteAddressesAndPorts {
@@ -221,24 +240,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 				r.Id = requestID
 				dns.HandleFailed(w, r)
 			} else {
-
-				if (resp.Rcode == dns.RcodeSuccess) || (resp.Rcode == dns.RcodeNameError) {
-					minTTLSeconds := dnsProxy.getMinTTLSeconds(resp)
-					respQuestionCacheKey := getQuestionCacheKey(resp)
-
-					if (len(respQuestionCacheKey) > 0) && (minTTLSeconds > 0) {
-						ttlDuration := time.Second * time.Duration(minTTLSeconds)
-						now := time.Now()
-						expirationTime := now.Add(ttlDuration)
-						cacheObject := &cacheObject{
-							cacheTime:      now,
-							expirationTime: expirationTime,
-							message:        resp.Copy(),
-						}
-						dnsProxy.cache.Set(respQuestionCacheKey, cacheObject, ttlDuration)
-					}
-				}
-
+				dnsProxy.cacheResponse(resp)
 				resp.Id = requestID
 				w.WriteMsg(resp)
 			}
