@@ -200,14 +200,11 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		requestID := r.Id
 		responded := false
 
-		requestQuestionCacheKey := getQuestionCacheKey(r)
-
-		co, ok := dnsProxy.cache.Get(requestQuestionCacheKey)
+		co, ok := dnsProxy.cache.Get(getQuestionCacheKey(r))
 		if ok {
 			cacheObjectCopy := co.(*cacheObject).Copy()
 			if dnsProxy.adjustTTL(cacheObjectCopy) {
 				dnsProxy.metrics.IncrementCacheHits()
-
 				msg := cacheObjectCopy.message
 				msg.Id = requestID
 				w.WriteMsg(msg)
