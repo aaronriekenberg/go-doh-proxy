@@ -125,7 +125,7 @@ func (dnsProxy *DNSProxy) getMinTTLSeconds(m *dns.Msg) uint32 {
 	foundTTL := false
 	var minTTLSeconds uint32
 
-	processRR := func(rrHeader *dns.RR_Header) {
+	processRRHeader := func(rrHeader *dns.RR_Header) {
 		ttl := rrHeader.Ttl
 		if ttl < dnsProxy.configuration.MinTTLSeconds {
 			ttl = dnsProxy.configuration.MinTTLSeconds
@@ -141,10 +141,10 @@ func (dnsProxy *DNSProxy) getMinTTLSeconds(m *dns.Msg) uint32 {
 	}
 
 	for _, rr := range m.Answer {
-		processRR(rr.Header())
+		processRRHeader(rr.Header())
 	}
 	for _, rr := range m.Ns {
-		processRR(rr.Header())
+		processRRHeader(rr.Header())
 	}
 
 	return minTTLSeconds
