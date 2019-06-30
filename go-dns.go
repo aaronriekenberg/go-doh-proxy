@@ -107,17 +107,24 @@ func (co *cacheObject) copy() *cacheObject {
 }
 
 type DNSProxy struct {
-	configuration *configuration
-	dnsClient     *dns.Client
-	cache         *cache.Cache
-	metrics       metrics
+	configuration            *configuration
+	remoteHostAndPortStrings []string
+	dnsClient                *dns.Client
+	cache                    *cache.Cache
+	metrics                  metrics
 }
 
 func NewDNSProxy(configuration *configuration) *DNSProxy {
+	remoteHostAndPortStrings := make([]string, 0, len(configuration.RemoteAddressesAndPorts))
+	for _, hostAndPort := range configuration.RemoteAddressesAndPorts {
+		remoteHostAndPortStrings = append(remoteHostAndPortStrings, hostAndPort.JoinHostPort())
+	}
+
 	return &DNSProxy{
-		configuration: configuration,
-		dnsClient:     new(dns.Client),
-		cache:         cache.New(cache.NoExpiration, 1*time.Minute),
+		configuration:            configuration,
+		remoteHostAndPortStrings: remoteHostAndPortStrings,
+		dnsClient:                new(dns.Client),
+		cache:                    cache.New(cache.NoExpiration, 1*time.Minute),
 	}
 }
 
@@ -203,11 +210,6 @@ func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 }
 
 func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
-	remoteHostAndPortStrings := make([]string, 0, len(dnsProxy.configuration.RemoteAddressesAndPorts))
-	for _, hostAndPort := range dnsProxy.configuration.RemoteAddressesAndPorts {
-		remoteHostAndPortStrings = append(remoteHostAndPortStrings, hostAndPort.JoinHostPort())
-	}
-
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 
 		requestID := r.Id
@@ -228,7 +230,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		if !responded {
 			dnsProxy.metrics.incrementCacheMisses()
 			r.Id = dns.Id()
-			remoteHostAndPort := pickRandomStringSliceEntry(remoteHostAndPortStrings)
+			remoteHostAndPort := pickRandomStringSliceEntry(dnsProxy.remoteHostAndPortStrings)
 			resp, _, err := dnsProxy.dnsClient.Exchange(r, remoteHostAndPort)
 			if err != nil {
 				r.Id = requestID
