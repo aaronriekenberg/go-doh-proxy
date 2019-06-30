@@ -233,6 +233,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 			remoteHostAndPort := pickRandomStringSliceEntry(dnsProxy.remoteHostAndPortStrings)
 			resp, _, err := dnsProxy.dnsClient.Exchange(r, remoteHostAndPort)
 			if err != nil {
+				logger.Printf("dnsClient exchange remoteHostAndPort = %v error = %v", remoteHostAndPort, err.Error())
 				r.Id = requestID
 				dns.HandleFailed(w, r)
 			} else {
