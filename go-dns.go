@@ -98,7 +98,7 @@ type cacheObject struct {
 	message        *dns.Msg
 }
 
-func (co *cacheObject) Copy() *cacheObject {
+func (co *cacheObject) copy() *cacheObject {
 	return &cacheObject{
 		cacheTime:      co.cacheTime,
 		expirationTime: co.expirationTime,
@@ -121,7 +121,7 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 	}
 }
 
-func (dnsProxy *DNSProxy) getMinTTLSeconds(m *dns.Msg) uint32 {
+func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	foundTTL := false
 	var minTTLSeconds uint32
 
@@ -183,9 +183,9 @@ func (dnsProxy *DNSProxy) adjustTTL(cacheObject *cacheObject) bool {
 	return valid
 }
 
-func (dnsProxy *DNSProxy) cacheResponse(resp *dns.Msg) {
+func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 	if (resp.Rcode == dns.RcodeSuccess) || (resp.Rcode == dns.RcodeNameError) {
-		minTTLSeconds := dnsProxy.getMinTTLSeconds(resp)
+		minTTLSeconds := dnsProxy.clampAndGetMinTTLSeconds(resp)
 		respQuestionCacheKey := getQuestionCacheKey(resp)
 
 		if (len(respQuestionCacheKey) > 0) && (minTTLSeconds > 0) {
@@ -215,7 +215,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 		co, ok := dnsProxy.cache.Get(getQuestionCacheKey(r))
 		if ok {
-			cacheObjectCopy := co.(*cacheObject).Copy()
+			cacheObjectCopy := co.(*cacheObject).copy()
 			if dnsProxy.adjustTTL(cacheObjectCopy) {
 				dnsProxy.metrics.IncrementCacheHits()
 				msg := cacheObjectCopy.message
@@ -234,7 +234,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 				r.Id = requestID
 				dns.HandleFailed(w, r)
 			} else {
-				dnsProxy.cacheResponse(resp)
+				dnsProxy.clampTTLAndCacheResponse(resp)
 				resp.Id = requestID
 				w.WriteMsg(resp)
 			}
