@@ -72,8 +72,9 @@ func getQuestionCacheKey(m *dns.Msg) string {
 }
 
 type metrics struct {
-	cacheHits   uint64
-	cacheMisses uint64
+	cacheHits    uint64
+	cacheMisses  uint64
+	clientErrors uint64
 }
 
 func (metrics *metrics) incrementCacheHits() {
@@ -90,6 +91,19 @@ func (metrics *metrics) incrementCacheMisses() {
 
 func (metrics *metrics) CacheMisses() uint64 {
 	return atomic.LoadUint64(&metrics.cacheMisses)
+}
+
+func (metrics *metrics) incrementClientErrors() {
+	atomic.AddUint64(&metrics.clientErrors, 1)
+}
+
+func (metrics *metrics) ClientErrors() uint64 {
+	return atomic.LoadUint64(&metrics.clientErrors)
+}
+
+func (metrics *metrics) String() string {
+	return fmt.Sprintf("cacheHits = %v cacheMisses = %v clientErrors = %v",
+		metrics.CacheHits(), metrics.CacheMisses(), metrics.ClientErrors())
 }
 
 type cacheObject struct {
@@ -233,6 +247,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 			remoteHostAndPort := pickRandomStringSliceEntry(dnsProxy.remoteHostAndPortStrings)
 			resp, _, err := dnsProxy.dnsClient.Exchange(r, remoteHostAndPort)
 			if err != nil {
+				dnsProxy.metrics.incrementClientErrors()
 				logger.Printf("dnsClient exchange remoteHostAndPort = %v error = %v", remoteHostAndPort, err.Error())
 				r.Id = requestID
 				dns.HandleFailed(w, r)
@@ -337,8 +352,8 @@ func (dnsProxy *DNSProxy) runPeriodicTimer() {
 	for {
 		select {
 		case <-ticker.C:
-			logger.Printf("timerPop cacheHits = %v cacheMisses = %v cache.ItemCount = %v",
-				dnsProxy.metrics.CacheHits(), dnsProxy.metrics.CacheMisses(), dnsProxy.cache.ItemCount())
+			logger.Printf("timerPop %v cache.ItemCount = %v",
+				dnsProxy.metrics.String(), dnsProxy.cache.ItemCount())
 		}
 	}
 }
