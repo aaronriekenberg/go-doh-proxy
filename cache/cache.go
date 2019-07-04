@@ -1,11 +1,16 @@
 package cache
 
 import (
+	"fmt"
 	"hash/fnv"
 	"sync"
+	"time"
 )
 
-const numShards = 257
+const (
+	numShards          = 257
+	janitorTimeSeconds = 60
+)
 
 func hash(s string) uint32 {
 	h := fnv.New32()
@@ -17,41 +22,38 @@ func shardIndex(key string) uint32 {
 	return (hash(key) % numShards)
 }
 
+// Expirable is an object that can expire from the cache a point in time.
+type Expirable interface {
+	Expired(now time.Time) bool
+}
+
 // Cache is a cache.
 type Cache struct {
-	shardMaxSize int
-	shards       [numShards]*shard
+	shards [numShards]*shard
 }
 
 // New returns a new cache.
-func New(maxSize int) *Cache {
-	shardMaxSize := maxSize / numShards
-	if shardMaxSize < 4 {
-		shardMaxSize = 4
+func New() *Cache {
+
+	cache := &Cache{}
+
+	for i := 0; i < numShards; i++ {
+		cache.shards[i] = newShard()
 	}
 
-	cache := &Cache{
-		shardMaxSize: shardMaxSize,
-	}
-	for i := 0; i < numShards; i++ {
-		cache.shards[i] = newShard(shardMaxSize)
-	}
+	go cache.runJanitor()
+
 	return cache
 }
 
-// ShardMaxSize returns the size of each shard.
-func (c *Cache) ShardMaxSize() int {
-	return c.shardMaxSize
-}
-
 // Add adds a new element to the cache. If the element already exists it is overwritten.
-func (c *Cache) Add(key string, value interface{}) {
+func (c *Cache) Add(key string, value Expirable) {
 	shardIndex := shardIndex(key)
 	c.shards[shardIndex].Add(key, value)
 }
 
-// Get looks up element index under key.
-func (c *Cache) Get(key string) (interface{}, bool) {
+// Get looks up element index under key.  May return elements that are expired.
+func (c *Cache) Get(key string) (Expirable, bool) {
 	shardIndex := shardIndex(key)
 	return c.shards[shardIndex].Get(key)
 }
@@ -60,6 +62,42 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 func (c *Cache) Remove(key string) {
 	shardIndex := shardIndex(key)
 	c.shards[shardIndex].Remove(key)
+}
+
+// Stats is statistics for the cache.
+type Stats struct {
+	totalEntries  int
+	minShardSize  int
+	minShardIndex int
+	maxShardSize  int
+	maxShardIndex int
+}
+
+func (s *Stats) String() string {
+	return fmt.Sprintf("totalEntries = %v minShardSize = %v minShardIndex = %v maxShardSize = %v maxShardIndex = %v",
+		s.totalEntries, s.minShardSize, s.minShardIndex, s.maxShardSize, s.maxShardIndex)
+}
+
+// Stats returns Stats for the cache.
+func (c *Cache) Stats() *Stats {
+	stats := &Stats{}
+
+	for i, s := range c.shards {
+		shardSize := s.Len()
+
+		stats.totalEntries += shardSize
+
+		if (i == 0) || (shardSize < stats.minShardSize) {
+			stats.minShardSize = shardSize
+			stats.minShardIndex = i
+		}
+		if (i == 0) || (shardSize > stats.maxShardSize) {
+			stats.maxShardSize = shardSize
+			stats.maxShardIndex = i
+		}
+	}
+
+	return stats
 }
 
 // Len returns the number of elements in the cache.
@@ -71,49 +109,36 @@ func (c *Cache) Len() int {
 	return len
 }
 
-type shard struct {
-	items   map[string]interface{}
-	maxSize int
-	mu      sync.RWMutex
-}
-
-func newShard(maxSize int) *shard {
-	return &shard{
-		items:   make(map[string]interface{}),
-		maxSize: maxSize,
-	}
-}
-
-func (s *shard) evictWithLockHeld(justAddedKey string) {
-	foundKeyToEvict := false
-	var keyToEvict string
-
-	for key := range s.items {
-		if key != justAddedKey {
-			keyToEvict = key
-			foundKeyToEvict = true
-			break
+func (c *Cache) runJanitor() {
+	ticker := time.NewTicker(time.Second * time.Duration(janitorTimeSeconds))
+	for {
+		select {
+		case <-ticker.C:
+			for _, s := range c.shards {
+				s.Expire()
+			}
 		}
 	}
+}
 
-	if foundKeyToEvict {
-		delete(s.items, keyToEvict)
+type shard struct {
+	items map[string]Expirable
+	mu    sync.RWMutex
+}
+
+func newShard() *shard {
+	return &shard{
+		items: make(map[string]Expirable),
 	}
 }
 
-func (s *shard) Add(key string, value interface{}) {
+func (s *shard) Add(key string, value Expirable) {
 	s.mu.Lock()
-
 	s.items[key] = value
-
-	for len(s.items) > s.maxSize {
-		s.evictWithLockHeld(key)
-	}
-
 	s.mu.Unlock()
 }
 
-func (s *shard) Get(key string) (interface{}, bool) {
+func (s *shard) Get(key string) (Expirable, bool) {
 	s.mu.RLock()
 	value, found := s.items[key]
 	s.mu.RUnlock()
@@ -131,4 +156,24 @@ func (s *shard) Len() int {
 	len := len(s.items)
 	s.mu.RUnlock()
 	return len
+}
+
+func (s *shard) Expire() {
+	var expiredKeys []string
+
+	s.mu.Lock()
+
+	now := time.Now()
+
+	for key, value := range s.items {
+		if value.Expired(now) {
+			expiredKeys = append(expiredKeys, key)
+		}
+	}
+
+	for _, key := range expiredKeys {
+		delete(s.items, key)
+	}
+
+	s.mu.Unlock()
 }

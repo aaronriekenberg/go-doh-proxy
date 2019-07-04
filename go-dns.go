@@ -51,7 +51,6 @@ type configuration struct {
 	MinTTLSeconds           uint32                 `json:"minTTLSeconds"`
 	MaxTTLSeconds           uint32                 `json:"maxTTLSeconds"`
 	TimerIntervalSeconds    int                    `json:"timerIntervalSeconds"`
-	MaxCacheSize            int                    `json:"maxCacheSize"`
 }
 
 func pickRandomStringSliceEntry(s []string) string {
@@ -114,7 +113,11 @@ type cacheObject struct {
 	message        *dns.Msg
 }
 
-func (co *cacheObject) copy() *cacheObject {
+func (co *cacheObject) Expired(now time.Time) bool {
+	return (now.After(co.expirationTime) || now.Equal(co.expirationTime))
+}
+
+func (co *cacheObject) Copy() *cacheObject {
 	return &cacheObject{
 		cacheTime:      co.cacheTime,
 		expirationTime: co.expirationTime,
@@ -138,14 +141,11 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 		remoteHostAndPortStrings = append(remoteHostAndPortStrings, hostAndPort.JoinHostPort())
 	}
 
-	cache := cache.New(configuration.MaxCacheSize)
-	logger.Printf("cache.ShardMaxSize = %v", cache.ShardMaxSize())
-
 	return &DNSProxy{
 		configuration:            configuration,
 		remoteHostAndPortStrings: remoteHostAndPortStrings,
 		dnsClient:                new(dns.Client),
-		cache:                    cache,
+		cache:                    cache.New(),
 	}
 }
 
@@ -182,7 +182,7 @@ func (dnsProxy *DNSProxy) adjustTTL(cacheObject *cacheObject) bool {
 	valid := true
 	now := time.Now()
 
-	if now.After(cacheObject.expirationTime) || now.Equal(cacheObject.expirationTime) {
+	if cacheObject.Expired(now) {
 		valid = false
 	}
 
@@ -238,7 +238,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 		co, ok := dnsProxy.cache.Get(getQuestionCacheKey(r))
 		if ok {
-			cacheObjectCopy := co.(*cacheObject).copy()
+			cacheObjectCopy := co.(*cacheObject).Copy()
 			if dnsProxy.adjustTTL(cacheObjectCopy) {
 				dnsProxy.metrics.IncrementCacheHits()
 				msg := cacheObjectCopy.message
@@ -359,8 +359,8 @@ func (dnsProxy *DNSProxy) runPeriodicTimer() {
 	for {
 		select {
 		case <-ticker.C:
-			logger.Printf("timerPop %v cache.Len = %v",
-				dnsProxy.metrics.String(), dnsProxy.cache.Len())
+			logger.Printf("timerPop metrics: %v cache.Stats: %v",
+				dnsProxy.metrics.String(), dnsProxy.cache.Stats())
 		}
 	}
 }
