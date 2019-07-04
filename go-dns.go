@@ -182,7 +182,7 @@ func (dnsProxy *DNSProxy) adjustTTL(cacheObject *cacheObject) bool {
 	valid := true
 	now := time.Now()
 
-	if now.Equal(cacheObject.expirationTime) || now.After(cacheObject.expirationTime) {
+	if now.After(cacheObject.expirationTime) || now.Equal(cacheObject.expirationTime) {
 		valid = false
 	}
 
