@@ -73,9 +73,11 @@ func getQuestionCacheKey(m *dns.Msg) string {
 }
 
 type metrics struct {
-	cacheHits    uint64
-	cacheMisses  uint64
-	clientErrors uint64
+	cacheHits      uint64
+	cacheMisses    uint64
+	clientErrors   uint64
+	notCachedRcode uint64
+	notCachedTTL   uint64
 }
 
 func (metrics *metrics) IncrementCacheHits() {
@@ -102,9 +104,25 @@ func (metrics *metrics) ClientErrors() uint64 {
 	return atomic.LoadUint64(&metrics.clientErrors)
 }
 
+func (metrics *metrics) IncrementNotCachedRcode() {
+	atomic.AddUint64(&metrics.notCachedRcode, 1)
+}
+
+func (metrics *metrics) NotCachedRcode() uint64 {
+	return atomic.LoadUint64(&metrics.notCachedRcode)
+}
+
+func (metrics *metrics) IncrementNotCachedTTL() {
+	atomic.AddUint64(&metrics.notCachedTTL, 1)
+}
+
+func (metrics *metrics) NotCachedTTL() uint64 {
+	return atomic.LoadUint64(&metrics.notCachedTTL)
+}
+
 func (metrics *metrics) String() string {
-	return fmt.Sprintf("cacheHits = %v cacheMisses = %v clientErrors = %v",
-		metrics.CacheHits(), metrics.CacheMisses(), metrics.ClientErrors())
+	return fmt.Sprintf("cacheHits = %v cacheMisses = %v clientErrors = %v notCachedRcode = %v notCachedTTL = %v",
+		metrics.CacheHits(), metrics.CacheMisses(), metrics.ClientErrors(), metrics.NotCachedRcode(), metrics.NotCachedTTL())
 }
 
 type cacheObject struct {
@@ -212,21 +230,29 @@ func (dnsProxy *DNSProxy) cacheObjectValidForHit(cacheObject *cacheObject) bool 
 }
 
 func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
-	if (resp.Rcode == dns.RcodeSuccess) || (resp.Rcode == dns.RcodeNameError) {
-		minTTLSeconds := dnsProxy.clampAndGetMinTTLSeconds(resp)
-		respQuestionCacheKey := getQuestionCacheKey(resp)
+	if !((resp.Rcode == dns.RcodeSuccess) || (resp.Rcode == dns.RcodeNameError)) {
+		dnsProxy.metrics.IncrementNotCachedRcode()
+		return
+	}
 
-		if (len(respQuestionCacheKey) > 0) && (minTTLSeconds > 0) {
-			ttlDuration := time.Second * time.Duration(minTTLSeconds)
-			now := time.Now()
-			expirationTime := now.Add(ttlDuration)
-			cacheObject := &cacheObject{
-				cacheTime:      now,
-				expirationTime: expirationTime,
-				message:        resp.Copy(),
-			}
-			dnsProxy.cache.Add(respQuestionCacheKey, cacheObject)
+	minTTLSeconds := dnsProxy.clampAndGetMinTTLSeconds(resp)
+	if minTTLSeconds <= 0 {
+		dnsProxy.metrics.IncrementNotCachedTTL()
+		return
+	}
+
+	respQuestionCacheKey := getQuestionCacheKey(resp)
+
+	if len(respQuestionCacheKey) > 0 {
+		ttlDuration := time.Second * time.Duration(minTTLSeconds)
+		now := time.Now()
+		expirationTime := now.Add(ttlDuration)
+		cacheObject := &cacheObject{
+			cacheTime:      now,
+			expirationTime: expirationTime,
+			message:        resp.Copy(),
 		}
+		dnsProxy.cache.Add(respQuestionCacheKey, cacheObject)
 	}
 }
 
