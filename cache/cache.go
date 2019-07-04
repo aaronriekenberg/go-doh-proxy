@@ -13,6 +13,10 @@ func hash(s string) uint64 {
 	return h.Sum64()
 }
 
+func shardIndex(key string) uint64 {
+	return hash(key) & (numShards - 1)
+}
+
 // Cache is a cache.
 type Cache struct {
 	shardSize int
@@ -42,22 +46,19 @@ func (c *Cache) ShardSize() int {
 
 // Add adds a new element to the cache. If the element already exists it is overwritten.
 func (c *Cache) Add(key string, value interface{}) {
-	hash := hash(key)
-	shardIndex := hash & (numShards - 1)
+	shardIndex := shardIndex(key)
 	c.shards[shardIndex].Add(key, value)
 }
 
 // Get looks up element index under key.
 func (c *Cache) Get(key string) (interface{}, bool) {
-	hash := hash(key)
-	shardIndex := hash & (numShards - 1)
+	shardIndex := shardIndex(key)
 	return c.shards[shardIndex].Get(key)
 }
 
 // Remove removes the element indexed with key.
 func (c *Cache) Remove(key string) {
-	hash := hash(key)
-	shardIndex := hash & (numShards - 1)
+	shardIndex := shardIndex(key)
 	c.shards[shardIndex].Remove(key)
 }
 
