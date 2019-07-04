@@ -5,16 +5,16 @@ import (
 	"sync"
 )
 
-const numShards = 256
+const numShards = 257
 
-func hash(s string) uint64 {
-	h := fnv.New64()
+func hash(s string) uint32 {
+	h := fnv.New32()
 	h.Write([]byte(s))
-	return h.Sum64()
+	return h.Sum32()
 }
 
-func shardIndex(key string) uint64 {
-	return hash(key) & (numShards - 1)
+func shardIndex(key string) uint32 {
+	return (hash(key) % numShards)
 }
 
 // Cache is a cache.
@@ -84,29 +84,31 @@ func newShard(size int) *shard {
 	}
 }
 
-func (s *shard) evictWithLockHeld() {
-	hasKey := false
-	var key string
+func (s *shard) evictWithLockHeld(justAddedKey string) {
+	foundKeyToEvict := false
+	var keyToEvict string
 
-	for k := range s.items {
-		key = k
-		hasKey = true
-		break
+	for key := range s.items {
+		if key != justAddedKey {
+			keyToEvict = key
+			foundKeyToEvict = true
+			break
+		}
 	}
 
-	if hasKey {
-		delete(s.items, key)
+	if foundKeyToEvict {
+		delete(s.items, keyToEvict)
 	}
 }
 
 func (s *shard) Add(key string, value interface{}) {
 	s.mu.Lock()
 
-	for (len(s.items) + 1) > s.size {
-		s.evictWithLockHeld()
-	}
-
 	s.items[key] = value
+
+	for (len(s.items) + 1) > s.size {
+		s.evictWithLockHeld(key)
+	}
 
 	s.mu.Unlock()
 }
