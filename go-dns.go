@@ -178,7 +178,7 @@ func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	return minTTLSeconds
 }
 
-func (dnsProxy *DNSProxy) adjustTTL(cacheObject *cacheObject) bool {
+func (dnsProxy *DNSProxy) cacheObjectValidForHit(cacheObject *cacheObject) bool {
 	valid := true
 	now := time.Now()
 
@@ -239,7 +239,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		co, ok := dnsProxy.cache.Get(getQuestionCacheKey(r))
 		if ok {
 			cacheObjectCopy := co.(*cacheObject).Copy()
-			if dnsProxy.adjustTTL(cacheObjectCopy) {
+			if dnsProxy.cacheObjectValidForHit(cacheObjectCopy) {
 				dnsProxy.metrics.IncrementCacheHits()
 				msg := cacheObjectCopy.message
 				msg.Id = requestID
