@@ -66,16 +66,17 @@ func (c *Cache) Remove(key string) {
 
 // Stats is statistics for the cache.
 type Stats struct {
-	totalEntries  int
-	minShardSize  int
-	minShardIndex int
-	maxShardSize  int
-	maxShardIndex int
+	totalEntries   int
+	minShardSize   int
+	minShardIndex  int
+	maxShardSize   int
+	maxShardIndex  int
+	numEmptyShards int
 }
 
 func (s *Stats) String() string {
-	return fmt.Sprintf("totalEntries = %v minShardSize = %v minShardIndex = %v maxShardSize = %v maxShardIndex = %v",
-		s.totalEntries, s.minShardSize, s.minShardIndex, s.maxShardSize, s.maxShardIndex)
+	return fmt.Sprintf("totalEntries = %v minShardSize = %v minShardIndex = %v maxShardSize = %v maxShardIndex = %v numEmptyShards = %v",
+		s.totalEntries, s.minShardSize, s.minShardIndex, s.maxShardSize, s.maxShardIndex, s.numEmptyShards)
 }
 
 // Stats returns Stats for the cache.
@@ -91,9 +92,14 @@ func (c *Cache) Stats() *Stats {
 			stats.minShardSize = shardSize
 			stats.minShardIndex = i
 		}
+
 		if (i == 0) || (shardSize > stats.maxShardSize) {
 			stats.maxShardSize = shardSize
 			stats.maxShardIndex = i
+		}
+
+		if shardSize == 0 {
+			stats.numEmptyShards++
 		}
 	}
 
