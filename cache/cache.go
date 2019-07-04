@@ -106,7 +106,7 @@ func (s *shard) Add(key string, value interface{}) {
 
 	s.items[key] = value
 
-	for (len(s.items) + 1) > s.size {
+	for len(s.items) > s.size {
 		s.evictWithLockHeld(key)
 	}
 
