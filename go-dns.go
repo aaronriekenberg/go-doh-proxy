@@ -78,6 +78,7 @@ type metrics struct {
 	clientErrors   uint64
 	notCachedRcode uint64
 	notCachedTTL   uint64
+	notCachedKey   uint64
 }
 
 func (metrics *metrics) IncrementCacheHits() {
@@ -120,9 +121,17 @@ func (metrics *metrics) NotCachedTTL() uint64 {
 	return atomic.LoadUint64(&metrics.notCachedTTL)
 }
 
+func (metrics *metrics) IncrementNotCachedKey() {
+	atomic.AddUint64(&metrics.notCachedKey, 1)
+}
+
+func (metrics *metrics) NotCachedKey() uint64 {
+	return atomic.LoadUint64(&metrics.notCachedKey)
+}
+
 func (metrics *metrics) String() string {
-	return fmt.Sprintf("cacheHits = %v cacheMisses = %v clientErrors = %v notCachedRcode = %v notCachedTTL = %v",
-		metrics.CacheHits(), metrics.CacheMisses(), metrics.ClientErrors(), metrics.NotCachedRcode(), metrics.NotCachedTTL())
+	return fmt.Sprintf("cacheHits = %v cacheMisses = %v clientErrors = %v notCachedRcode = %v notCachedTTL = %v notCachedKey = %v",
+		metrics.CacheHits(), metrics.CacheMisses(), metrics.ClientErrors(), metrics.NotCachedRcode(), metrics.NotCachedTTL(), metrics.NotCachedKey())
 }
 
 type cacheObject struct {
@@ -242,18 +251,20 @@ func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 	}
 
 	respQuestionCacheKey := getQuestionCacheKey(resp)
-
-	if len(respQuestionCacheKey) > 0 {
-		ttlDuration := time.Second * time.Duration(minTTLSeconds)
-		now := time.Now()
-		expirationTime := now.Add(ttlDuration)
-		cacheObject := &cacheObject{
-			cacheTime:      now,
-			expirationTime: expirationTime,
-			message:        resp.Copy(),
-		}
-		dnsProxy.cache.Add(respQuestionCacheKey, cacheObject)
+	if len(respQuestionCacheKey) == 0 {
+		dnsProxy.metrics.IncrementNotCachedKey()
+		return
 	}
+
+	ttlDuration := time.Second * time.Duration(minTTLSeconds)
+	now := time.Now()
+	expirationTime := now.Add(ttlDuration)
+	cacheObject := &cacheObject{
+		cacheTime:      now,
+		expirationTime: expirationTime,
+		message:        resp.Copy(),
+	}
+	dnsProxy.cache.Add(respQuestionCacheKey, cacheObject)
 }
 
 func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
