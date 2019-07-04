@@ -113,17 +113,17 @@ func (s *shard) Add(key string, value interface{}) {
 	s.mu.Unlock()
 }
 
-func (s *shard) Remove(key string) {
-	s.mu.Lock()
-	delete(s.items, key)
-	s.mu.Unlock()
-}
-
 func (s *shard) Get(key string) (interface{}, bool) {
 	s.mu.RLock()
 	value, found := s.items[key]
 	s.mu.RUnlock()
 	return value, found
+}
+
+func (s *shard) Remove(key string) {
+	s.mu.Lock()
+	delete(s.items, key)
+	s.mu.Unlock()
 }
 
 func (s *shard) Len() int {
