@@ -19,29 +19,29 @@ func shardIndex(key string) uint32 {
 
 // Cache is a cache.
 type Cache struct {
-	shardSize int
-	shards    [numShards]*shard
+	shardMaxSize int
+	shards       [numShards]*shard
 }
 
 // New returns a new cache.
-func New(size int) *Cache {
-	shardSize := size / numShards
-	if shardSize < 4 {
-		shardSize = 4
+func New(maxSize int) *Cache {
+	shardMaxSize := maxSize / numShards
+	if shardMaxSize < 4 {
+		shardMaxSize = 4
 	}
 
 	cache := &Cache{
-		shardSize: shardSize,
+		shardMaxSize: shardMaxSize,
 	}
 	for i := 0; i < numShards; i++ {
-		cache.shards[i] = newShard(shardSize)
+		cache.shards[i] = newShard(shardMaxSize)
 	}
 	return cache
 }
 
-// ShardSize returns the size of each shard.
-func (c *Cache) ShardSize() int {
-	return c.shardSize
+// ShardMaxSize returns the size of each shard.
+func (c *Cache) ShardMaxSize() int {
+	return c.shardMaxSize
 }
 
 // Add adds a new element to the cache. If the element already exists it is overwritten.
@@ -72,15 +72,15 @@ func (c *Cache) Len() int {
 }
 
 type shard struct {
-	items map[string]interface{}
-	size  int
-	mu    sync.RWMutex
+	items   map[string]interface{}
+	maxSize int
+	mu      sync.RWMutex
 }
 
-func newShard(size int) *shard {
+func newShard(maxSize int) *shard {
 	return &shard{
-		items: make(map[string]interface{}),
-		size:  size,
+		items:   make(map[string]interface{}),
+		maxSize: maxSize,
 	}
 }
 
@@ -106,7 +106,7 @@ func (s *shard) Add(key string, value interface{}) {
 
 	s.items[key] = value
 
-	for len(s.items) > s.size {
+	for len(s.items) > s.maxSize {
 		s.evictWithLockHeld(key)
 	}
 

@@ -139,7 +139,7 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 	}
 
 	cache := cache.New(configuration.MaxCacheSize)
-	logger.Printf("cache.ShardSize = %v", cache.ShardSize())
+	logger.Printf("cache.ShardMaxSize = %v", cache.ShardMaxSize())
 
 	return &DNSProxy{
 		configuration:            configuration,
