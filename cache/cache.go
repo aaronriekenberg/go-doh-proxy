@@ -84,7 +84,7 @@ func newShard(size int) *shard {
 }
 
 func (s *shard) Add(key string, el interface{}) {
-	for (s.Len() + 1) > s.size {
+	if (s.Len() + 1) > s.size {
 		s.Evict()
 	}
 
