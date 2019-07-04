@@ -79,7 +79,7 @@ type metrics struct {
 	clientErrors uint64
 }
 
-func (metrics *metrics) incrementCacheHits() {
+func (metrics *metrics) IncrementCacheHits() {
 	atomic.AddUint64(&metrics.cacheHits, 1)
 }
 
@@ -87,7 +87,7 @@ func (metrics *metrics) CacheHits() uint64 {
 	return atomic.LoadUint64(&metrics.cacheHits)
 }
 
-func (metrics *metrics) incrementCacheMisses() {
+func (metrics *metrics) IncrementCacheMisses() {
 	atomic.AddUint64(&metrics.cacheMisses, 1)
 }
 
@@ -95,7 +95,7 @@ func (metrics *metrics) CacheMisses() uint64 {
 	return atomic.LoadUint64(&metrics.cacheMisses)
 }
 
-func (metrics *metrics) incrementClientErrors() {
+func (metrics *metrics) IncrementClientErrors() {
 	atomic.AddUint64(&metrics.clientErrors, 1)
 }
 
@@ -240,7 +240,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		if ok {
 			cacheObjectCopy := co.(*cacheObject).copy()
 			if dnsProxy.adjustTTL(cacheObjectCopy) {
-				dnsProxy.metrics.incrementCacheHits()
+				dnsProxy.metrics.IncrementCacheHits()
 				msg := cacheObjectCopy.message
 				msg.Id = requestID
 				w.WriteMsg(msg)
@@ -249,12 +249,12 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		}
 
 		if !responded {
-			dnsProxy.metrics.incrementCacheMisses()
+			dnsProxy.metrics.IncrementCacheMisses()
 			r.Id = dns.Id()
 			remoteHostAndPort := pickRandomStringSliceEntry(dnsProxy.remoteHostAndPortStrings)
 			resp, _, err := dnsProxy.dnsClient.Exchange(r, remoteHostAndPort)
 			if err != nil {
-				dnsProxy.metrics.incrementClientErrors()
+				dnsProxy.metrics.IncrementClientErrors()
 				logger.Printf("dnsClient exchange remoteHostAndPort = %v error = %v", remoteHostAndPort, err.Error())
 				r.Id = requestID
 				dns.HandleFailed(w, r)
