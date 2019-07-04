@@ -84,13 +84,30 @@ func newShard(size int) *shard {
 	}
 }
 
-func (s *shard) Add(key string, value interface{}) {
-	if (s.Len() + 1) > s.size {
-		s.Evict()
+func (s *shard) evictWithLockHeld() {
+	hasKey := false
+	var key string
+
+	for k := range s.items {
+		key = k
+		hasKey = true
+		break
 	}
 
+	if hasKey {
+		delete(s.items, key)
+	}
+}
+
+func (s *shard) Add(key string, value interface{}) {
 	s.mu.Lock()
+
+	for (len(s.items) + 1) > s.size {
+		s.evictWithLockHeld()
+	}
+
 	s.items[key] = value
+
 	s.mu.Unlock()
 }
 
@@ -98,25 +115,6 @@ func (s *shard) Remove(key string) {
 	s.mu.Lock()
 	delete(s.items, key)
 	s.mu.Unlock()
-}
-
-func (s *shard) Evict() {
-	hasKey := false
-	var key string
-
-	s.mu.RLock()
-	for k := range s.items {
-		key = k
-		hasKey = true
-		break
-	}
-	s.mu.RUnlock()
-
-	if !hasKey {
-		return
-	}
-
-	s.Remove(key)
 }
 
 func (s *shard) Get(key string) (interface{}, bool) {
