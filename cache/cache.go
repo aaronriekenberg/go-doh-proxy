@@ -84,13 +84,13 @@ func newShard(size int) *shard {
 	}
 }
 
-func (s *shard) Add(key string, el interface{}) {
+func (s *shard) Add(key string, value interface{}) {
 	if (s.Len() + 1) > s.size {
 		s.Evict()
 	}
 
 	s.mu.Lock()
-	s.items[key] = el
+	s.items[key] = value
 	s.mu.Unlock()
 }
 
