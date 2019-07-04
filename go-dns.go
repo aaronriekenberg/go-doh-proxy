@@ -365,7 +365,7 @@ func (dnsProxy *DNSProxy) runPeriodicTimer() {
 	}
 }
 
-// start the dns proxy
+// Start starts the dns proxy.
 func (dnsProxy *DNSProxy) Start() {
 	dnsServeMux := dnsProxy.createServeMux()
 
