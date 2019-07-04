@@ -14,9 +14,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aaronriekenberg/go-dns/cache"
+
 	"github.com/kr/pretty"
 	"github.com/miekg/dns"
-	"github.com/patrickmn/go-cache"
 )
 
 var logger = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lmicroseconds)
@@ -49,7 +50,8 @@ type configuration struct {
 	ReverseAddressesToNames []reverseAddressToName `json:"reverseAddressesToNames"`
 	MinTTLSeconds           uint32                 `json:"minTTLSeconds"`
 	MaxTTLSeconds           uint32                 `json:"maxTTLSeconds"`
-	TimerIntervalSeconds    uint32                 `json:"timerIntervalSeconds"`
+	TimerIntervalSeconds    int                    `json:"timerIntervalSeconds"`
+	MaxCacheSize            int                    `json:"maxCacheSize"`
 }
 
 func pickRandomStringSliceEntry(s []string) string {
@@ -120,6 +122,7 @@ func (co *cacheObject) copy() *cacheObject {
 	}
 }
 
+// DNSProxy is the dns proxy
 type DNSProxy struct {
 	configuration            *configuration
 	remoteHostAndPortStrings []string
@@ -128,17 +131,21 @@ type DNSProxy struct {
 	metrics                  metrics
 }
 
+// NewDNSProxy creates the dns proxy.
 func NewDNSProxy(configuration *configuration) *DNSProxy {
 	remoteHostAndPortStrings := make([]string, 0, len(configuration.RemoteAddressesAndPorts))
 	for _, hostAndPort := range configuration.RemoteAddressesAndPorts {
 		remoteHostAndPortStrings = append(remoteHostAndPortStrings, hostAndPort.JoinHostPort())
 	}
 
+	cache := cache.New(configuration.MaxCacheSize)
+	logger.Printf("cache.ShardSize = %v", cache.ShardSize())
+
 	return &DNSProxy{
 		configuration:            configuration,
 		remoteHostAndPortStrings: remoteHostAndPortStrings,
 		dnsClient:                new(dns.Client),
-		cache:                    cache.New(cache.NoExpiration, 1*time.Minute),
+		cache:                    cache,
 	}
 }
 
@@ -218,7 +225,7 @@ func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 				expirationTime: expirationTime,
 				message:        resp.Copy(),
 			}
-			dnsProxy.cache.Set(respQuestionCacheKey, cacheObject, ttlDuration)
+			dnsProxy.cache.Add(respQuestionCacheKey, cacheObject)
 		}
 	}
 }
@@ -352,12 +359,13 @@ func (dnsProxy *DNSProxy) runPeriodicTimer() {
 	for {
 		select {
 		case <-ticker.C:
-			logger.Printf("timerPop %v cache.ItemCount = %v",
-				dnsProxy.metrics.String(), dnsProxy.cache.ItemCount())
+			logger.Printf("timerPop %v cache.Len = %v",
+				dnsProxy.metrics.String(), dnsProxy.cache.Len())
 		}
 	}
 }
 
+// start the dns proxy
 func (dnsProxy *DNSProxy) Start() {
 	dnsServeMux := dnsProxy.createServeMux()
 
