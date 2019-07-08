@@ -157,11 +157,10 @@ func (dnsProxy *DNSProxy) cacheObjectValidForHit(cacheObject *cacheObject) bool 
 	}
 
 	if valid {
-		secondsToSubtractFromTTL := now.Sub(cacheObject.cacheTime).Seconds()
+		secondsToSubtractFromTTL := int64(now.Sub(cacheObject.cacheTime).Seconds())
 
 		adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
-			ttl := int64(rrHeader.Ttl)
-			ttl -= int64(secondsToSubtractFromTTL)
+			ttl := int64(rrHeader.Ttl) - secondsToSubtractFromTTL
 			if ttl <= 0 {
 				valid = false
 			} else {
