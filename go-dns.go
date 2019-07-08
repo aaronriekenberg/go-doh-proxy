@@ -201,6 +201,12 @@ func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	for _, rr := range m.Ns {
 		processRRHeader(rr.Header())
 	}
+	for _, rr := range m.Extra {
+		rrHeader := rr.Header()
+		if rrHeader.Rrtype != dns.TypeOPT {
+			processRRHeader(rrHeader)
+		}
+	}
 
 	return minTTLSeconds
 }
@@ -216,7 +222,6 @@ func (dnsProxy *DNSProxy) cacheObjectValidForHit(cacheObject *cacheObject) bool 
 	if valid {
 		secondsToSubtractFromTTL := now.Sub(cacheObject.cacheTime).Seconds()
 
-		m := cacheObject.message
 		adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
 			ttl := int64(rrHeader.Ttl)
 			ttl -= int64(secondsToSubtractFromTTL)
@@ -227,11 +232,19 @@ func (dnsProxy *DNSProxy) cacheObjectValidForHit(cacheObject *cacheObject) bool 
 			}
 		}
 
+		m := cacheObject.message
+
 		for _, rr := range m.Answer {
 			adjustRRHeaderTTL(rr.Header())
 		}
 		for _, rr := range m.Ns {
 			adjustRRHeaderTTL(rr.Header())
+		}
+		for _, rr := range m.Extra {
+			rrHeader := rr.Header()
+			if rrHeader.Rrtype != dns.TypeOPT {
+				adjustRRHeaderTTL(rrHeader)
+			}
 		}
 	}
 
