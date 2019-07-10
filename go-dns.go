@@ -148,7 +148,13 @@ func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	return minTTLSeconds
 }
 
-func (dnsProxy *DNSProxy) copyCacheObjectForHit(uncopiedCacheObject *cacheObject) *cacheObject {
+func (dnsProxy *DNSProxy) copyCacheObjectForHit(expirable cache.Expirable) *cacheObject {
+
+	uncopiedCacheObject, ok := expirable.(*cacheObject)
+	if !ok {
+		return nil
+	}
+
 	now := time.Now()
 
 	if uncopiedCacheObject.Expired(now) {
@@ -158,12 +164,12 @@ func (dnsProxy *DNSProxy) copyCacheObjectForHit(uncopiedCacheObject *cacheObject
 	cacheObjectCopy := uncopiedCacheObject.Copy()
 
 	secondsToSubtractFromTTL := int64(now.Sub(cacheObjectCopy.cacheTime).Seconds())
-	valid := true
+	ok = true
 
 	adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
 		ttl := int64(rrHeader.Ttl) - secondsToSubtractFromTTL
 		if ttl <= 0 {
-			valid = false
+			ok = false
 		} else {
 			rrHeader.Ttl = uint32(ttl)
 		}
@@ -184,7 +190,7 @@ func (dnsProxy *DNSProxy) copyCacheObjectForHit(uncopiedCacheObject *cacheObject
 		}
 	}
 
-	if !valid {
+	if !ok {
 		return nil
 	}
 
@@ -229,7 +235,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 		co, ok := dnsProxy.cache.Get(getQuestionCacheKey(r))
 		if ok {
-			if cacheObjectCopy := dnsProxy.copyCacheObjectForHit(co.(*cacheObject)); cacheObjectCopy != nil {
+			if cacheObjectCopy := dnsProxy.copyCacheObjectForHit(co); cacheObjectCopy != nil {
 				dnsProxy.metrics.IncrementCacheHits()
 				msg := cacheObjectCopy.message
 				msg.Id = requestID
