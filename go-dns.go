@@ -205,7 +205,6 @@ func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 
 	minTTLSeconds := dnsProxy.clampAndGetMinTTLSeconds(resp)
 	if minTTLSeconds <= 0 {
-		logger.Printf("minTTLSeconds = %v resp = \n%v", minTTLSeconds, resp.String())
 		dnsProxy.metrics.IncrementNotCachedTTL()
 		return
 	}
