@@ -148,43 +148,47 @@ func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	return minTTLSeconds
 }
 
-func (dnsProxy *DNSProxy) cacheObjectValidForHit(cacheObject *cacheObject) bool {
-	valid := true
+func (dnsProxy *DNSProxy) copyCacheObjectForHit(uncopiedCacheObject *cacheObject) *cacheObject {
 	now := time.Now()
 
-	if cacheObject.Expired(now) {
-		valid = false
+	if uncopiedCacheObject.Expired(now) {
+		return nil
 	}
 
-	if valid {
-		secondsToSubtractFromTTL := int64(now.Sub(cacheObject.cacheTime).Seconds())
+	cacheObjectCopy := uncopiedCacheObject.Copy()
 
-		adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
-			ttl := int64(rrHeader.Ttl) - secondsToSubtractFromTTL
-			if ttl <= 0 {
-				valid = false
-			} else {
-				rrHeader.Ttl = uint32(ttl)
-			}
-		}
+	secondsToSubtractFromTTL := int64(now.Sub(cacheObjectCopy.cacheTime).Seconds())
+	valid := true
 
-		m := cacheObject.message
-
-		for _, rr := range m.Answer {
-			adjustRRHeaderTTL(rr.Header())
-		}
-		for _, rr := range m.Ns {
-			adjustRRHeaderTTL(rr.Header())
-		}
-		for _, rr := range m.Extra {
-			rrHeader := rr.Header()
-			if rrHeader.Rrtype != dns.TypeOPT {
-				adjustRRHeaderTTL(rrHeader)
-			}
+	adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
+		ttl := int64(rrHeader.Ttl) - secondsToSubtractFromTTL
+		if ttl <= 0 {
+			valid = false
+		} else {
+			rrHeader.Ttl = uint32(ttl)
 		}
 	}
 
-	return valid
+	m := cacheObjectCopy.message
+
+	for _, rr := range m.Answer {
+		adjustRRHeaderTTL(rr.Header())
+	}
+	for _, rr := range m.Ns {
+		adjustRRHeaderTTL(rr.Header())
+	}
+	for _, rr := range m.Extra {
+		rrHeader := rr.Header()
+		if rrHeader.Rrtype != dns.TypeOPT {
+			adjustRRHeaderTTL(rrHeader)
+		}
+	}
+
+	if !valid {
+		return nil
+	}
+
+	return cacheObjectCopy
 }
 
 func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
@@ -225,8 +229,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 		co, ok := dnsProxy.cache.Get(getQuestionCacheKey(r))
 		if ok {
-			cacheObjectCopy := co.(*cacheObject).Copy()
-			if dnsProxy.cacheObjectValidForHit(cacheObjectCopy) {
+			if cacheObjectCopy := dnsProxy.copyCacheObjectForHit(co.(*cacheObject)); cacheObjectCopy != nil {
 				dnsProxy.metrics.IncrementCacheHits()
 				msg := cacheObjectCopy.message
 				msg.Id = requestID
