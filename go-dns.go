@@ -114,8 +114,8 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 }
 
 func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
-	foundTTL := false
-	var minTTLSeconds uint32
+	foundRRHeaderTTL := false
+	minTTLSeconds := dnsProxy.configuration.MinTTLSeconds
 
 	processRRHeader := func(rrHeader *dns.RR_Header) {
 		ttl := rrHeader.Ttl
@@ -125,9 +125,9 @@ func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 		if ttl > dnsProxy.configuration.MaxTTLSeconds {
 			ttl = dnsProxy.configuration.MaxTTLSeconds
 		}
-		if (!foundTTL) || (ttl < minTTLSeconds) {
+		if (!foundRRHeaderTTL) || (ttl < minTTLSeconds) {
 			minTTLSeconds = ttl
-			foundTTL = true
+			foundRRHeaderTTL = true
 		}
 		rrHeader.Ttl = ttl
 	}
