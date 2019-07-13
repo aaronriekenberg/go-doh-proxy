@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 )
 
-type Metrics struct {
+type metrics struct {
 	cacheHits      uint64
 	cacheMisses    uint64
 	clientErrors   uint64
@@ -14,55 +14,55 @@ type Metrics struct {
 	notCachedKey   uint64
 }
 
-func (metrics *Metrics) IncrementCacheHits() {
+func (metrics *metrics) IncrementCacheHits() {
 	atomic.AddUint64(&metrics.cacheHits, 1)
 }
 
-func (metrics *Metrics) CacheHits() uint64 {
+func (metrics *metrics) CacheHits() uint64 {
 	return atomic.LoadUint64(&metrics.cacheHits)
 }
 
-func (metrics *Metrics) IncrementCacheMisses() {
+func (metrics *metrics) IncrementCacheMisses() {
 	atomic.AddUint64(&metrics.cacheMisses, 1)
 }
 
-func (metrics *Metrics) CacheMisses() uint64 {
+func (metrics *metrics) CacheMisses() uint64 {
 	return atomic.LoadUint64(&metrics.cacheMisses)
 }
 
-func (metrics *Metrics) IncrementClientErrors() {
+func (metrics *metrics) IncrementClientErrors() {
 	atomic.AddUint64(&metrics.clientErrors, 1)
 }
 
-func (metrics *Metrics) ClientErrors() uint64 {
+func (metrics *metrics) ClientErrors() uint64 {
 	return atomic.LoadUint64(&metrics.clientErrors)
 }
 
-func (metrics *Metrics) IncrementNotCachedRcode() {
+func (metrics *metrics) IncrementNotCachedRcode() {
 	atomic.AddUint64(&metrics.notCachedRcode, 1)
 }
 
-func (metrics *Metrics) NotCachedRcode() uint64 {
+func (metrics *metrics) NotCachedRcode() uint64 {
 	return atomic.LoadUint64(&metrics.notCachedRcode)
 }
 
-func (metrics *Metrics) IncrementNotCachedTTL() {
+func (metrics *metrics) IncrementNotCachedTTL() {
 	atomic.AddUint64(&metrics.notCachedTTL, 1)
 }
 
-func (metrics *Metrics) NotCachedTTL() uint64 {
+func (metrics *metrics) NotCachedTTL() uint64 {
 	return atomic.LoadUint64(&metrics.notCachedTTL)
 }
 
-func (metrics *Metrics) IncrementNotCachedKey() {
+func (metrics *metrics) IncrementNotCachedKey() {
 	atomic.AddUint64(&metrics.notCachedKey, 1)
 }
 
-func (metrics *Metrics) NotCachedKey() uint64 {
+func (metrics *metrics) NotCachedKey() uint64 {
 	return atomic.LoadUint64(&metrics.notCachedKey)
 }
 
-func (metrics *Metrics) String() string {
+func (metrics *metrics) String() string {
 	return fmt.Sprintf("cacheHits = %v cacheMisses = %v clientErrors = %v notCachedRcode = %v notCachedTTL = %v notCachedKey = %v",
 		metrics.CacheHits(), metrics.CacheMisses(), metrics.ClientErrors(), metrics.NotCachedRcode(), metrics.NotCachedTTL(), metrics.NotCachedKey())
 }

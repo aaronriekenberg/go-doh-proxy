@@ -95,7 +95,7 @@ type DNSProxy struct {
 	remoteHostAndPortStrings []string
 	dnsClient                *dns.Client
 	cache                    *cache.Cache
-	metrics                  Metrics
+	metrics                  metrics
 }
 
 // NewDNSProxy creates the dns proxy.
