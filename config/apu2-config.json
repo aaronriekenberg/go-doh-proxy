@@ -37,5 +37,5 @@
   ],
   "minTTLSeconds": 300,
   "maxTTLSeconds": 3600,
-  "timerIntervalSeconds": 600
+  "timerIntervalSeconds": 10
 }
