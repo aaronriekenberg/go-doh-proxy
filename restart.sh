@@ -7,4 +7,8 @@ $KILL_CMD go-dns
 
 sleep 2
 
-nohup ./go-dns $CONFIG_FILE 2>&1 | svlogd logs &
+if [ -f logs/output ]; then
+ mv logs/output logs/output.1
+fi
+
+nohup ./go-dns $CONFIG_FILE 2>&1 > logs/output &
