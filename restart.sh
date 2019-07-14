@@ -7,4 +7,4 @@ $KILL_CMD go-dns
 
 sleep 2
 
-nohup ./go-dns $CONFIG_FILE 2>&1 > logs/output &
+nohup ./go-dns $CONFIG_FILE 2>&1 >> logs/output &
