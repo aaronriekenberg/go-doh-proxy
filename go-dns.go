@@ -85,16 +85,6 @@ func (co *cacheObject) ExpirationTime() time.Time {
 	return co.expirationTime
 }
 
-func (co *cacheObject) Copy() *cacheObject {
-	copy := &cacheObject{
-		cacheTime:      co.cacheTime,
-		expirationTime: co.expirationTime,
-	}
-	co.message.CopyTo(&copy.message)
-
-	return copy
-}
-
 // DNSProxy is the dns proxy
 type DNSProxy struct {
 	configuration            *configuration
@@ -167,9 +157,7 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(expirable cache.Expirable) *dn
 		return nil
 	}
 
-	cacheObjectCopy := uncopiedCacheObject.Copy()
-
-	secondsToSubtractFromTTL := int64(now.Sub(cacheObjectCopy.cacheTime).Seconds())
+	secondsToSubtractFromTTL := int64(now.Sub(uncopiedCacheObject.cacheTime).Seconds())
 	ok = true
 
 	adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
@@ -181,15 +169,15 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(expirable cache.Expirable) *dn
 		}
 	}
 
-	m := &cacheObjectCopy.message
+	messageCopy := uncopiedCacheObject.message.Copy()
 
-	for _, rr := range m.Answer {
+	for _, rr := range messageCopy.Answer {
 		adjustRRHeaderTTL(rr.Header())
 	}
-	for _, rr := range m.Ns {
+	for _, rr := range messageCopy.Ns {
 		adjustRRHeaderTTL(rr.Header())
 	}
-	for _, rr := range m.Extra {
+	for _, rr := range messageCopy.Extra {
 		rrHeader := rr.Header()
 		if rrHeader.Rrtype != dns.TypeOPT {
 			adjustRRHeaderTTL(rrHeader)
@@ -200,7 +188,7 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(expirable cache.Expirable) *dn
 		return nil
 	}
 
-	return m
+	return messageCopy
 }
 
 func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
