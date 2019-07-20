@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"container/heap"
 	"fmt"
 	"hash/fnv"
 	"sync"
@@ -25,6 +26,7 @@ func shardIndex(key string) uint32 {
 // Expirable is an object that can expire from the cache a point in time.
 type Expirable interface {
 	Expired(now time.Time) bool
+	ExpirationTime() time.Time
 }
 
 // Cache is a cache.
@@ -56,12 +58,6 @@ func (c *Cache) Add(key string, value Expirable) {
 func (c *Cache) Get(key string) (Expirable, bool) {
 	shardIndex := shardIndex(key)
 	return c.shards[shardIndex].Get(key)
-}
-
-// Remove removes the element indexed with key.
-func (c *Cache) Remove(key string) {
-	shardIndex := shardIndex(key)
-	c.shards[shardIndex].Remove(key)
 }
 
 // Stats is statistics for the cache.
@@ -123,40 +119,81 @@ func (c *Cache) runJanitor() {
 	}
 }
 
+type shardPriorityQueueItem struct {
+	key   string
+	value Expirable
+}
+
+type shardPriorityQueue []*shardPriorityQueueItem
+
+func (pq shardPriorityQueue) Len() int { return len(pq) }
+
+func (pq shardPriorityQueue) Less(i, j int) bool {
+	return pq[i].value.ExpirationTime().Before(pq[j].value.ExpirationTime())
+}
+
+func (pq shardPriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+}
+
+func (pq *shardPriorityQueue) Push(x interface{}) {
+	item := x.(*shardPriorityQueueItem)
+	*pq = append(*pq, item)
+}
+
+func (pq *shardPriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	*pq = old[0 : n-1]
+	return item
+}
+
 type shard struct {
-	items map[string]Expirable
-	mu    sync.RWMutex
+	items         map[string]Expirable
+	priorityQueue shardPriorityQueue
+	mu            sync.RWMutex
 }
 
 func newShard() *shard {
-	return &shard{
+	s := &shard{
 		items: make(map[string]Expirable),
 	}
+	heap.Init(&s.priorityQueue)
+	return s
 }
 
 func (s *shard) Add(key string, value Expirable) {
 	s.mu.Lock()
+
 	s.items[key] = value
+
+	pqItem := &shardPriorityQueueItem{
+		key:   key,
+		value: value,
+	}
+	heap.Push(&s.priorityQueue, pqItem)
+
 	s.mu.Unlock()
 }
 
 func (s *shard) Get(key string) (Expirable, bool) {
 	s.mu.RLock()
-	value, found := s.items[key]
-	s.mu.RUnlock()
-	return value, found
-}
 
-func (s *shard) Remove(key string) {
-	s.mu.Lock()
-	delete(s.items, key)
-	s.mu.Unlock()
+	value, found := s.items[key]
+
+	s.mu.RUnlock()
+
+	return value, found
 }
 
 func (s *shard) Len() int {
 	s.mu.RLock()
+
 	len := len(s.items)
+
 	s.mu.RUnlock()
+
 	return len
 }
 
@@ -166,10 +203,20 @@ func (s *shard) Expire() {
 	s.mu.Lock()
 
 	now := time.Now()
+	done := false
 
-	for key, value := range s.items {
-		if value.Expired(now) {
-			expiredKeys = append(expiredKeys, key)
+	for (!done) && (s.priorityQueue.Len() > 0) {
+		pqItem := s.priorityQueue[0]
+		if pqItem.value.Expired(now) {
+			heap.Pop(&s.priorityQueue)
+			mapItem, ok := s.items[pqItem.key]
+			// check expiration of map item.
+			// priority queue may contain multiple elements for same key.
+			if ok && mapItem.Expired(now) {
+				expiredKeys = append(expiredKeys, pqItem.key)
+			}
+		} else {
+			done = true
 		}
 	}
 
