@@ -198,8 +198,6 @@ func (s *shard) Len() int {
 }
 
 func (s *shard) Expire() {
-	var expiredKeys []string
-
 	s.mu.Lock()
 
 	now := time.Now()
@@ -213,15 +211,11 @@ func (s *shard) Expire() {
 			// check expiration of map item.
 			// priority queue may contain multiple elements for same key.
 			if ok && mapItem.Expired(now) {
-				expiredKeys = append(expiredKeys, pqItem.key)
+				delete(s.items, pqItem.key)
 			}
 		} else {
 			done = true
 		}
-	}
-
-	for _, key := range expiredKeys {
-		delete(s.items, key)
 	}
 
 	s.mu.Unlock()

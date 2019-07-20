@@ -35,7 +35,7 @@
       "name": "raspberrypi.domain."
     }
   ],
-  "minTTLSeconds": 300,
-  "maxTTLSeconds": 3600,
+  "minTTLSeconds": 10,
+  "maxTTLSeconds": 30,
   "timerIntervalSeconds": 10
 }
