@@ -268,6 +268,7 @@ func (dnsProxy *DNSProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 				address, ok := forwardNamesToAddresses[question.Name]
 				if !ok {
 					msg.SetRcode(r, dns.RcodeNameError)
+					msg.Authoritative = true
 				} else {
 					msg.SetReply(r)
 					msg.Authoritative = true
@@ -298,6 +299,7 @@ func (dnsProxy *DNSProxy) createReverseHandlerFunc() dns.HandlerFunc {
 				name, ok := reverseAddressesToNames[question.Name]
 				if !ok {
 					msg.SetRcode(r, dns.RcodeNameError)
+					msg.Authoritative = true
 				} else {
 					msg.SetReply(r)
 					msg.Authoritative = true
