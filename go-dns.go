@@ -193,19 +193,16 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(expirable cache.Expirable) *dn
 
 func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 	if !((resp.Rcode == dns.RcodeSuccess) || (resp.Rcode == dns.RcodeNameError)) {
-		dnsProxy.metrics.IncrementNotCachedRcode()
 		return
 	}
 
 	minTTLSeconds := dnsProxy.clampAndGetMinTTLSeconds(resp)
 	if minTTLSeconds <= 0 {
-		dnsProxy.metrics.IncrementNotCachedTTL()
 		return
 	}
 
 	respQuestionCacheKey := getQuestionCacheKey(resp)
 	if len(respQuestionCacheKey) == 0 {
-		dnsProxy.metrics.IncrementNotCachedKey()
 		return
 	}
 
