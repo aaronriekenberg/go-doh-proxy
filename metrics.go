@@ -6,9 +6,10 @@ import (
 )
 
 type metrics struct {
-	cacheHits    uint64
-	cacheMisses  uint64
-	clientErrors uint64
+	cacheHits           uint64
+	cacheMisses         uint64
+	clientErrors        uint64
+	writeResponseErrors uint64
 }
 
 func (metrics *metrics) IncrementCacheHits() {
@@ -35,6 +36,15 @@ func (metrics *metrics) ClientErrors() uint64 {
 	return atomic.LoadUint64(&metrics.clientErrors)
 }
 
+func (metrics *metrics) IncrementWriteResponseErrors() {
+	atomic.AddUint64(&metrics.writeResponseErrors, 1)
+}
+
+func (metrics *metrics) WriteResponseErrors() uint64 {
+	return atomic.LoadUint64(&metrics.writeResponseErrors)
+}
+
 func (metrics *metrics) String() string {
-	return fmt.Sprintf("cacheHits = %v cacheMisses = %v clientErrors = %v", metrics.CacheHits(), metrics.CacheMisses(), metrics.ClientErrors())
+	return fmt.Sprintf("cacheHits = %v cacheMisses = %v clientErrors = %v writeResponseErrors = %v",
+		metrics.CacheHits(), metrics.CacheMisses(), metrics.ClientErrors(), metrics.WriteResponseErrors())
 }

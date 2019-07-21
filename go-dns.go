@@ -219,6 +219,13 @@ func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 	dnsProxy.cache.Add(respQuestionCacheKey, cacheObject)
 }
 
+func (dnsProxy *DNSProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
+	if err := w.WriteMsg(r); err != nil {
+		dnsProxy.metrics.IncrementWriteResponseErrors()
+		logger.Printf("writeResponse error = %v", err.Error())
+	}
+}
+
 func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 
@@ -230,7 +237,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 			if cacheMessageCopy := dnsProxy.copyCachedMessageForHit(co); cacheMessageCopy != nil {
 				dnsProxy.metrics.IncrementCacheHits()
 				cacheMessageCopy.Id = requestID
-				w.WriteMsg(cacheMessageCopy)
+				dnsProxy.writeResponse(w, cacheMessageCopy)
 				responded = true
 			}
 		}
@@ -248,7 +255,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 			} else {
 				dnsProxy.clampTTLAndCacheResponse(resp)
 				resp.Id = requestID
-				w.WriteMsg(resp)
+				dnsProxy.writeResponse(w, resp)
 			}
 		}
 	}
@@ -277,7 +284,7 @@ func (dnsProxy *DNSProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 						A:   address,
 					})
 				}
-				w.WriteMsg(msg)
+				dnsProxy.writeResponse(w, msg)
 				return
 			}
 		}
@@ -308,7 +315,7 @@ func (dnsProxy *DNSProxy) createReverseHandlerFunc() dns.HandlerFunc {
 						Ptr: name,
 					})
 				}
-				w.WriteMsg(msg)
+				dnsProxy.writeResponse(w, msg)
 				return
 			}
 		}
