@@ -50,14 +50,13 @@ func New() *Cache {
 
 // Add adds a new element to the cache. If the element already exists it is overwritten.
 func (c *Cache) Add(key string, value Expirable) {
-	shardIndex := shardIndex(key)
-	c.shards[shardIndex].Add(key, value)
+	c.shards[shardIndex(key)].Add(key, value)
 }
 
 // Get looks up element index under key.  May return elements that are expired.
-func (c *Cache) Get(key string) (Expirable, bool) {
-	shardIndex := shardIndex(key)
-	return c.shards[shardIndex].Get(key)
+func (c *Cache) Get(key string) (value Expirable, ok bool) {
+	value, ok = c.shards[shardIndex(key)].Get(key)
+	return
 }
 
 // Stats is statistics for the cache.
@@ -165,6 +164,7 @@ func newShard() *shard {
 
 func (s *shard) Add(key string, value Expirable) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.items[key] = value
 
@@ -173,32 +173,27 @@ func (s *shard) Add(key string, value Expirable) {
 		value: value,
 	}
 	heap.Push(&s.priorityQueue, pqItem)
-
-	s.mu.Unlock()
 }
 
-func (s *shard) Get(key string) (Expirable, bool) {
+func (s *shard) Get(key string) (value Expirable, ok bool) {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	value, found := s.items[key]
+	value, ok = s.items[key]
 
-	s.mu.RUnlock()
-
-	return value, found
+	return
 }
 
 func (s *shard) Len() int {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	len := len(s.items)
-
-	s.mu.RUnlock()
-
-	return len
+	return len(s.items)
 }
 
 func (s *shard) Expire() {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	now := time.Now()
 	done := false
@@ -218,5 +213,4 @@ func (s *shard) Expire() {
 		}
 	}
 
-	s.mu.Unlock()
 }
