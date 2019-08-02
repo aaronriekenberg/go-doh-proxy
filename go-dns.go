@@ -88,6 +88,8 @@ func (co *cacheObject) ExpirationTime() time.Time {
 // DNSProxy is the dns proxy
 type DNSProxy struct {
 	configuration            *configuration
+	forwardNamesToAddresses  map[string]net.IP
+	reverseAddressesToNames  map[string]string
 	remoteHostAndPortStrings []string
 	cache                    *cache.Cache
 	metrics                  metrics
@@ -95,6 +97,17 @@ type DNSProxy struct {
 
 // NewDNSProxy creates the dns proxy.
 func NewDNSProxy(configuration *configuration) *DNSProxy {
+
+	forwardNamesToAddresses := make(map[string]net.IP)
+	for _, forwardNameToAddress := range configuration.ForwardNamesToAddresses {
+		forwardNamesToAddresses[forwardNameToAddress.Name] = net.ParseIP(forwardNameToAddress.IPAddress)
+	}
+
+	reverseAddressesToNames := make(map[string]string)
+	for _, reverseAddressToName := range configuration.ReverseAddressesToNames {
+		reverseAddressesToNames[reverseAddressToName.ReverseAddress] = reverseAddressToName.Name
+	}
+
 	remoteHostAndPortStrings := make([]string, 0, len(configuration.RemoteAddressesAndPorts))
 	for _, hostAndPort := range configuration.RemoteAddressesAndPorts {
 		remoteHostAndPortStrings = append(remoteHostAndPortStrings, hostAndPort.JoinHostPort())
@@ -102,6 +115,8 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 
 	return &DNSProxy{
 		configuration:            configuration,
+		forwardNamesToAddresses:  forwardNamesToAddresses,
+		reverseAddressesToNames:  reverseAddressesToNames,
 		remoteHostAndPortStrings: remoteHostAndPortStrings,
 		cache:                    cache.New(),
 	}
@@ -266,17 +281,12 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc(net string) dns.HandlerFunc {
 }
 
 func (dnsProxy *DNSProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
-	forwardNamesToAddresses := make(map[string]net.IP)
-	for _, forwardNameToAddress := range dnsProxy.configuration.ForwardNamesToAddresses {
-		forwardNamesToAddresses[forwardNameToAddress.Name] = net.ParseIP(forwardNameToAddress.IPAddress)
-	}
-
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) > 0 {
 			question := &(r.Question[0])
 			if question.Qtype == dns.TypeA {
 				msg := new(dns.Msg)
-				address, ok := forwardNamesToAddresses[question.Name]
+				address, ok := dnsProxy.forwardNamesToAddresses[question.Name]
 				if !ok {
 					msg.SetRcode(r, dns.RcodeNameError)
 					msg.Authoritative = true
@@ -297,17 +307,12 @@ func (dnsProxy *DNSProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 }
 
 func (dnsProxy *DNSProxy) createReverseHandlerFunc() dns.HandlerFunc {
-	reverseAddressesToNames := make(map[string]string)
-	for _, reverseAddressToName := range dnsProxy.configuration.ReverseAddressesToNames {
-		reverseAddressesToNames[reverseAddressToName.ReverseAddress] = reverseAddressToName.Name
-	}
-
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) > 0 {
 			question := &(r.Question[0])
 			if question.Qtype == dns.TypePTR {
 				msg := new(dns.Msg)
-				name, ok := reverseAddressesToNames[question.Name]
+				name, ok := dnsProxy.reverseAddressesToNames[question.Name]
 				if !ok {
 					msg.SetRcode(r, dns.RcodeNameError)
 					msg.Authoritative = true
