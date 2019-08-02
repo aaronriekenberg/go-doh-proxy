@@ -89,7 +89,6 @@ func (co *cacheObject) ExpirationTime() time.Time {
 type DNSProxy struct {
 	configuration            *configuration
 	remoteHostAndPortStrings []string
-	dnsClient                *dns.Client
 	cache                    *cache.Cache
 	metrics                  metrics
 }
@@ -104,7 +103,6 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 	return &DNSProxy{
 		configuration:            configuration,
 		remoteHostAndPortStrings: remoteHostAndPortStrings,
-		dnsClient:                new(dns.Client),
 		cache:                    cache.New(),
 	}
 }
@@ -226,7 +224,13 @@ func (dnsProxy *DNSProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
 	}
 }
 
-func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
+func (dnsProxy *DNSProxy) createProxyHandlerFunc(net string) dns.HandlerFunc {
+
+	dnsClient := &dns.Client{
+		Net:            net,
+		SingleInflight: true,
+	}
+
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 
 		requestID := r.Id
@@ -246,10 +250,10 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 			dnsProxy.metrics.IncrementCacheMisses()
 			r.Id = dns.Id()
 			remoteHostAndPort := pickRandomStringSliceEntry(dnsProxy.remoteHostAndPortStrings)
-			resp, _, err := dnsProxy.dnsClient.Exchange(r, remoteHostAndPort)
+			resp, _, err := dnsClient.Exchange(r, remoteHostAndPort)
 			if err != nil {
 				dnsProxy.metrics.IncrementClientErrors()
-				logger.Printf("dnsClient exchange remoteHostAndPort = %v error = %v", remoteHostAndPort, err.Error())
+				logger.Printf("dnsClient exchange net = %v remoteHostAndPort = %v error = %v", net, remoteHostAndPort, err.Error())
 				r.Id = requestID
 				dns.HandleFailed(w, r)
 			} else {
@@ -323,11 +327,11 @@ func (dnsProxy *DNSProxy) createReverseHandlerFunc() dns.HandlerFunc {
 	}
 }
 
-func (dnsProxy *DNSProxy) createServeMux() *dns.ServeMux {
+func (dnsProxy *DNSProxy) createServeMux(net string) *dns.ServeMux {
 
 	dnsServeMux := dns.NewServeMux()
 
-	dnsServeMux.HandleFunc(".", dnsProxy.createProxyHandlerFunc())
+	dnsServeMux.HandleFunc(".", dnsProxy.createProxyHandlerFunc(net))
 
 	dnsServeMux.HandleFunc(dnsProxy.configuration.ForwardDomain, dnsProxy.createForwardDomainHandlerFunc())
 
@@ -336,9 +340,9 @@ func (dnsProxy *DNSProxy) createServeMux() *dns.ServeMux {
 	return dnsServeMux
 }
 
-func (dnsProxy *DNSProxy) runServer(dnsServeMux *dns.ServeMux, listenAddrAndPort, net string) {
+func (dnsProxy *DNSProxy) runServer(listenAddrAndPort, net string) {
 	srv := &dns.Server{
-		Handler: dnsServeMux,
+		Handler: dnsProxy.createServeMux(net),
 		Addr:    listenAddrAndPort,
 		Net:     net,
 	}
@@ -363,12 +367,10 @@ func (dnsProxy *DNSProxy) runPeriodicTimer() {
 
 // Start starts the dns proxy.
 func (dnsProxy *DNSProxy) Start() {
-	dnsServeMux := dnsProxy.createServeMux()
-
 	listenAddressAndPort := dnsProxy.configuration.ListenAddress.JoinHostPort()
 
-	go dnsProxy.runServer(dnsServeMux, listenAddressAndPort, "udp")
-	go dnsProxy.runServer(dnsServeMux, listenAddressAndPort, "tcp")
+	go dnsProxy.runServer(listenAddressAndPort, "tcp")
+	go dnsProxy.runServer(listenAddressAndPort, "udp")
 
 	go dnsProxy.runPeriodicTimer()
 }
