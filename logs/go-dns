@@ -1,8 +1,0 @@
-/home/aaron/go-dns/logs/output {
-	daily
-        rotate 7
-        missingok
-        notifempty
-        compress
-        copytruncate
-}

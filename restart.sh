@@ -7,4 +7,6 @@ $KILL_CMD go-dns
 
 sleep 2
 
-nohup ./go-dns $CONFIG_FILE >> logs/output 2>&1 &
+export PATH=${HOME}/bin:$PATH
+
+nohup ./go-dns $CONFIG_FILE 2>&1 | svlogd logs &
