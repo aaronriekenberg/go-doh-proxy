@@ -144,7 +144,12 @@ func (pq *shardPriorityQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)
 	item := old[n-1]
-	*pq = old[0 : n-1]
+	if n == 1 {
+		*pq = nil
+	} else {
+		old[n-1] = nil
+		*pq = old[0 : n-1]
+	}
 	return item
 }
 
