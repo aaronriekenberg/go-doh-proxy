@@ -57,18 +57,16 @@ func pickRandomStringSliceEntry(s []string) string {
 }
 
 func getQuestionCacheKey(m *dns.Msg) string {
-	key := ""
-	first := true
+	var builder strings.Builder
 
-	for _, question := range m.Question {
-		if !first {
-			key += "|"
+	for i, question := range m.Question {
+		if i > 0 {
+			builder.WriteString("|")
 		}
-		key += fmt.Sprintf("%s:%d:%d", strings.ToLower(question.Name), question.Qtype, question.Qclass)
-		first = false
+		builder.WriteString(fmt.Sprintf("%s:%d:%d", strings.ToLower(question.Name), question.Qtype, question.Qclass))
 	}
 
-	return key
+	return builder.String()
 }
 
 type cacheObject struct {
