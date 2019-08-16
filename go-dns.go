@@ -61,9 +61,9 @@ func getQuestionCacheKey(m *dns.Msg) string {
 
 	for i, question := range m.Question {
 		if i > 0 {
-			builder.WriteString("|")
+			builder.WriteByte('|')
 		}
-		builder.WriteString(fmt.Sprintf("%s:%d:%d", strings.ToLower(question.Name), question.Qtype, question.Qclass))
+		fmt.Fprintf(&builder, "%s:%d:%d", strings.ToLower(question.Name), question.Qtype, question.Qclass)
 	}
 
 	return builder.String()
