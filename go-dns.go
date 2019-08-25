@@ -222,6 +222,7 @@ func (dnsProxy *DNSProxy) makeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err error)
 		return
 	}
 
+	defer httpResponse.Body.Close()
 	bodyBuffer, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
 		logger.Printf("ioutil.ReadAll error %v", err.Error())
