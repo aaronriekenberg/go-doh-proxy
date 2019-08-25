@@ -274,7 +274,7 @@ func (dnsProxy *DNSProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
 	}
 }
 
-func (dnsProxy *DNSProxy) createProxyHandlerFunc(net string) dns.HandlerFunc {
+func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 
@@ -362,11 +362,11 @@ func (dnsProxy *DNSProxy) createReverseHandlerFunc() dns.HandlerFunc {
 	}
 }
 
-func (dnsProxy *DNSProxy) createServeMux(net string) *dns.ServeMux {
+func (dnsProxy *DNSProxy) createServeMux() *dns.ServeMux {
 
 	dnsServeMux := dns.NewServeMux()
 
-	dnsServeMux.HandleFunc(".", dnsProxy.createProxyHandlerFunc(net))
+	dnsServeMux.HandleFunc(".", dnsProxy.createProxyHandlerFunc())
 
 	dnsServeMux.HandleFunc(dnsProxy.configuration.ForwardDomain, dnsProxy.createForwardDomainHandlerFunc())
 
@@ -375,9 +375,9 @@ func (dnsProxy *DNSProxy) createServeMux(net string) *dns.ServeMux {
 	return dnsServeMux
 }
 
-func (dnsProxy *DNSProxy) runServer(listenAddrAndPort, net string) {
+func (dnsProxy *DNSProxy) runServer(listenAddrAndPort, net string, serveMux *dns.ServeMux) {
 	srv := &dns.Server{
-		Handler: dnsProxy.createServeMux(net),
+		Handler: serveMux,
 		Addr:    listenAddrAndPort,
 		Net:     net,
 	}
@@ -404,8 +404,10 @@ func (dnsProxy *DNSProxy) runPeriodicTimer() {
 func (dnsProxy *DNSProxy) Start() {
 	listenAddressAndPort := dnsProxy.configuration.ListenAddress.JoinHostPort()
 
-	go dnsProxy.runServer(listenAddressAndPort, "tcp")
-	go dnsProxy.runServer(listenAddressAndPort, "udp")
+	serveMux := dnsProxy.createServeMux()
+
+	go dnsProxy.runServer(listenAddressAndPort, "tcp", serveMux)
+	go dnsProxy.runServer(listenAddressAndPort, "udp", serveMux)
 
 	go dnsProxy.runPeriodicTimer()
 }
