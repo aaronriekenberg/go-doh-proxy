@@ -3,16 +3,7 @@
     "host": "192.168.1.1",
     "port": "10053"
   },
-  "remoteAddressesAndPorts": [
-    {
-      "host": "8.8.8.8",
-      "port": "53"
-    },
-    {
-      "host": "8.8.4.4",
-      "port": "53"
-    }
-  ],
+  "remoteHTTPURL": "https://dns.google/dns-query",
   "forwardDomain": "domain.",
   "forwardNamesToAddresses": [
     {

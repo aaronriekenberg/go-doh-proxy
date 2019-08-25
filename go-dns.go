@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -42,7 +44,7 @@ type reverseAddressToName struct {
 
 type configuration struct {
 	ListenAddress           hostAndPort            `json:"listenAddress"`
-	RemoteAddressesAndPorts []hostAndPort          `json:"remoteAddressesAndPorts"`
+	RemoteHTTPURL           string                 `json:"remoteHTTPURL"`
 	ForwardDomain           string                 `json:"forwardDomain"`
 	ForwardNamesToAddresses []forwardNameToAddress `json:"forwardNamesToAddresses"`
 	ReverseDomain           string                 `json:"reverseDomain"`
@@ -50,10 +52,6 @@ type configuration struct {
 	MinTTLSeconds           uint32                 `json:"minTTLSeconds"`
 	MaxTTLSeconds           uint32                 `json:"maxTTLSeconds"`
 	TimerIntervalSeconds    int                    `json:"timerIntervalSeconds"`
-}
-
-func pickRandomStringSliceEntry(s []string) string {
-	return s[rand.Intn(len(s))]
 }
 
 func getQuestionCacheKey(m *dns.Msg) string {
@@ -106,17 +104,11 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 		reverseAddressesToNames[reverseAddressToName.ReverseAddress] = reverseAddressToName.Name
 	}
 
-	remoteHostAndPortStrings := make([]string, 0, len(configuration.RemoteAddressesAndPorts))
-	for _, hostAndPort := range configuration.RemoteAddressesAndPorts {
-		remoteHostAndPortStrings = append(remoteHostAndPortStrings, hostAndPort.JoinHostPort())
-	}
-
 	return &DNSProxy{
-		configuration:            configuration,
-		forwardNamesToAddresses:  forwardNamesToAddresses,
-		reverseAddressesToNames:  reverseAddressesToNames,
-		remoteHostAndPortStrings: remoteHostAndPortStrings,
-		cache:                    cache.New(),
+		configuration:           configuration,
+		forwardNamesToAddresses: forwardNamesToAddresses,
+		reverseAddressesToNames: reverseAddressesToNames,
+		cache:                   cache.New(),
 	}
 }
 
@@ -202,6 +194,51 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(expirable cache.Expirable) *dn
 	return messageCopy
 }
 
+func (dnsProxy *DNSProxy) makeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err error) {
+	const dnsMessageMIMEType = "application/dns-message"
+
+	packedRequest, err := r.Pack()
+	if err != nil {
+		logger.Printf("error packing request %v", err.Error())
+		return
+	}
+
+	httpRequest, err := http.NewRequest("POST", dnsProxy.configuration.RemoteHTTPURL, bytes.NewReader(packedRequest))
+	if err != nil {
+		logger.Printf("NewRequest error %v", err.Error())
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	httpRequest = httpRequest.WithContext(ctx)
+	httpRequest.Header.Set("Content-Type", dnsMessageMIMEType)
+	httpRequest.Header.Set("Accept", dnsMessageMIMEType)
+
+	httpResponse, err := http.DefaultClient.Do(httpRequest)
+	if err != nil {
+		logger.Printf("DefaultClient.Do error %v", err.Error())
+		return
+	}
+
+	bodyBuffer, err := ioutil.ReadAll(httpResponse.Body)
+	if err != nil {
+		logger.Printf("ioutil.ReadAll error %v", err.Error())
+		return
+	}
+
+	resp = new(dns.Msg)
+	err = resp.Unpack(bodyBuffer)
+	if err != nil {
+		logger.Printf("Unpack error %v", err.Error())
+		resp = nil
+		return
+	}
+
+	return
+}
+
 func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 	if !((resp.Rcode == dns.RcodeSuccess) || (resp.Rcode == dns.RcodeNameError)) {
 		return
@@ -239,11 +276,6 @@ func (dnsProxy *DNSProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
 
 func (dnsProxy *DNSProxy) createProxyHandlerFunc(net string) dns.HandlerFunc {
 
-	dnsClient := &dns.Client{
-		Net:            net,
-		SingleInflight: true,
-	}
-
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 
 		requestID := r.Id
@@ -261,19 +293,19 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc(net string) dns.HandlerFunc {
 
 		if !responded {
 			dnsProxy.metrics.IncrementCacheMisses()
-			r.Id = dns.Id()
-			remoteHostAndPort := pickRandomStringSliceEntry(dnsProxy.remoteHostAndPortStrings)
-			resp, _, err := dnsClient.Exchange(r, remoteHostAndPort)
+			r.Id = 0
+			responseMsg, err := dnsProxy.makeHTTPRequest(r)
 			if err != nil {
 				dnsProxy.metrics.IncrementClientErrors()
-				logger.Printf("dnsClient exchange net = %v remoteHostAndPort = %v error = %v", net, remoteHostAndPort, err.Error())
+				logger.Printf("makeHttpRequest error %v", err.Error())
 				r.Id = requestID
 				dns.HandleFailed(w, r)
-			} else {
-				dnsProxy.clampTTLAndCacheResponse(resp)
-				resp.Id = requestID
-				dnsProxy.writeResponse(w, resp)
+				return
 			}
+
+			dnsProxy.clampTTLAndCacheResponse(responseMsg)
+			responseMsg.Id = requestID
+			dnsProxy.writeResponse(w, responseMsg)
 		}
 	}
 }
