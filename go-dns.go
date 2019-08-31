@@ -83,14 +83,76 @@ func (co *cacheObject) ExpirationTime() time.Time {
 	return co.expirationTime
 }
 
+type dohClient struct {
+	remoteHTTPURL string
+}
+
+func newDOHClient(remoteHTTPURL string) *dohClient {
+	return &dohClient{
+		remoteHTTPURL: remoteHTTPURL,
+	}
+}
+
+func (dohClient *dohClient) MakeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err error) {
+	const dnsMessageMIMEType = "application/dns-message"
+	const maxBodyBytes = 65535 // RFC 8484 section 6
+
+	packedRequest, err := r.Pack()
+	if err != nil {
+		logger.Printf("error packing request %v", err)
+		return
+	}
+
+	httpRequest, err := http.NewRequest("POST", dohClient.remoteHTTPURL, bytes.NewReader(packedRequest))
+	if err != nil {
+		logger.Printf("NewRequest error %v", err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	httpRequest = httpRequest.WithContext(ctx)
+	httpRequest.Header.Set("Content-Type", dnsMessageMIMEType)
+	httpRequest.Header.Set("Accept", dnsMessageMIMEType)
+
+	httpResponse, err := http.DefaultClient.Do(httpRequest)
+	if err != nil {
+		logger.Printf("DefaultClient.Do error %v", err)
+		return
+	}
+	defer httpResponse.Body.Close()
+
+	bodyBuffer, err := ioutil.ReadAll(io.LimitReader(httpResponse.Body, maxBodyBytes+1))
+	if err != nil {
+		logger.Printf("ioutil.ReadAll error %v", err)
+		return
+	}
+
+	if len(bodyBuffer) > maxBodyBytes {
+		err = errors.New("http response body too large")
+		return
+	}
+
+	resp = new(dns.Msg)
+	err = resp.Unpack(bodyBuffer)
+	if err != nil {
+		logger.Printf("Unpack error %v", err)
+		resp = nil
+		return
+	}
+
+	return
+}
+
 // DNSProxy is the dns proxy
 type DNSProxy struct {
-	configuration            *configuration
-	forwardNamesToAddresses  map[string]net.IP
-	reverseAddressesToNames  map[string]string
-	remoteHostAndPortStrings []string
-	cache                    *cache.Cache
-	metrics                  metrics
+	configuration           *configuration
+	forwardNamesToAddresses map[string]net.IP
+	reverseAddressesToNames map[string]string
+	dohClient               *dohClient
+	cache                   *cache.Cache
+	metrics                 metrics
 }
 
 // NewDNSProxy creates the dns proxy.
@@ -110,6 +172,7 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 		configuration:           configuration,
 		forwardNamesToAddresses: forwardNamesToAddresses,
 		reverseAddressesToNames: reverseAddressesToNames,
+		dohClient:               newDOHClient(configuration.RemoteHTTPURL),
 		cache:                   cache.New(),
 	}
 }
@@ -196,58 +259,6 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(expirable cache.Expirable) *dn
 	return messageCopy
 }
 
-func (dnsProxy *DNSProxy) makeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err error) {
-	const dnsMessageMIMEType = "application/dns-message"
-	const maxBodyBytes = 65535 // RFC 8484 section 6
-
-	packedRequest, err := r.Pack()
-	if err != nil {
-		logger.Printf("error packing request %v", err)
-		return
-	}
-
-	httpRequest, err := http.NewRequest("POST", dnsProxy.configuration.RemoteHTTPURL, bytes.NewReader(packedRequest))
-	if err != nil {
-		logger.Printf("NewRequest error %v", err)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	httpRequest = httpRequest.WithContext(ctx)
-	httpRequest.Header.Set("Content-Type", dnsMessageMIMEType)
-	httpRequest.Header.Set("Accept", dnsMessageMIMEType)
-
-	httpResponse, err := http.DefaultClient.Do(httpRequest)
-	if err != nil {
-		logger.Printf("DefaultClient.Do error %v", err)
-		return
-	}
-	defer httpResponse.Body.Close()
-
-	bodyBuffer, err := ioutil.ReadAll(io.LimitReader(httpResponse.Body, maxBodyBytes+1))
-	if err != nil {
-		logger.Printf("ioutil.ReadAll error %v", err)
-		return
-	}
-
-	if len(bodyBuffer) > maxBodyBytes {
-		err = errors.New("http response body too large")
-		return
-	}
-
-	resp = new(dns.Msg)
-	err = resp.Unpack(bodyBuffer)
-	if err != nil {
-		logger.Printf("Unpack error %v", err)
-		resp = nil
-		return
-	}
-
-	return
-}
-
 func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 	if !((resp.Rcode == dns.RcodeSuccess) || (resp.Rcode == dns.RcodeNameError)) {
 		return
@@ -301,7 +312,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 		dnsProxy.metrics.IncrementCacheMisses()
 		r.Id = 0
-		responseMsg, err := dnsProxy.makeHTTPRequest(r)
+		responseMsg, err := dnsProxy.dohClient.MakeHTTPRequest(r)
 		if err != nil {
 			dnsProxy.metrics.IncrementClientErrors()
 			logger.Printf("makeHttpRequest error %v", err)
