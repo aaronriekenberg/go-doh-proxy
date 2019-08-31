@@ -429,6 +429,13 @@ func readConfiguration(configFile string) *configuration {
 	return &config
 }
 
+func awaitShutdownSignal() {
+	sig := make(chan os.Signal)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	s := <-sig
+	logger.Fatalf("Signal (%v) received, stopping\n", s)
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		logger.Fatalf("Usage: %v <config json file>", os.Args[0])
@@ -441,8 +448,5 @@ func main() {
 	dnsProxy := NewDNSProxy(configuration)
 	dnsProxy.Start()
 
-	sig := make(chan os.Signal)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	s := <-sig
-	logger.Fatalf("Signal (%v) received, stopping\n", s)
+	awaitShutdownSignal()
 }
