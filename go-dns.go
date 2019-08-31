@@ -199,13 +199,13 @@ func (dnsProxy *DNSProxy) makeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err error)
 
 	packedRequest, err := r.Pack()
 	if err != nil {
-		logger.Printf("error packing request %v", err.Error())
+		logger.Printf("error packing request %v", err)
 		return
 	}
 
 	httpRequest, err := http.NewRequest("POST", dnsProxy.configuration.RemoteHTTPURL, bytes.NewReader(packedRequest))
 	if err != nil {
-		logger.Printf("NewRequest error %v", err.Error())
+		logger.Printf("NewRequest error %v", err)
 		return
 	}
 
@@ -218,21 +218,21 @@ func (dnsProxy *DNSProxy) makeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err error)
 
 	httpResponse, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
-		logger.Printf("DefaultClient.Do error %v", err.Error())
+		logger.Printf("DefaultClient.Do error %v", err)
 		return
 	}
 
 	defer httpResponse.Body.Close()
 	bodyBuffer, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
-		logger.Printf("ioutil.ReadAll error %v", err.Error())
+		logger.Printf("ioutil.ReadAll error %v", err)
 		return
 	}
 
 	resp = new(dns.Msg)
 	err = resp.Unpack(bodyBuffer)
 	if err != nil {
-		logger.Printf("Unpack error %v", err.Error())
+		logger.Printf("Unpack error %v", err)
 		resp = nil
 		return
 	}
@@ -271,7 +271,7 @@ func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 func (dnsProxy *DNSProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
 	if err := w.WriteMsg(r); err != nil {
 		dnsProxy.metrics.IncrementWriteResponseErrors()
-		logger.Printf("writeResponse error = %v", err.Error())
+		logger.Printf("writeResponse error = %v", err)
 	}
 }
 
@@ -298,7 +298,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 			responseMsg, err := dnsProxy.makeHTTPRequest(r)
 			if err != nil {
 				dnsProxy.metrics.IncrementClientErrors()
-				logger.Printf("makeHttpRequest error %v", err.Error())
+				logger.Printf("makeHttpRequest error %v", err)
 				r.Id = requestID
 				dns.HandleFailed(w, r)
 				return
@@ -386,7 +386,7 @@ func (dnsProxy *DNSProxy) runServer(listenAddrAndPort, net string, serveMux *dns
 	logger.Printf("starting %v server on %v", net, listenAddrAndPort)
 
 	if err := srv.ListenAndServe(); err != nil {
-		logger.Fatalf("Failed to set %v listener %s\n", net, err.Error())
+		logger.Fatalf("ListenAndServe error for net %s: %v", net, err)
 	}
 }
 
@@ -418,12 +418,12 @@ func readConfiguration(configFile string) *configuration {
 
 	source, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		logger.Fatalf("error reading %v: %v", configFile, err.Error())
+		logger.Fatalf("error reading %v: %v", configFile, err)
 	}
 
 	var config configuration
 	if err = json.Unmarshal(source, &config); err != nil {
-		logger.Fatalf("error parsing %v: %v", configFile, err.Error())
+		logger.Fatalf("error parsing %v: %v", configFile, err)
 	}
 
 	return &config
@@ -433,7 +433,7 @@ func awaitShutdownSignal() {
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	s := <-sig
-	logger.Fatalf("Signal (%v) received, stopping\n", s)
+	logger.Fatalf("Signal (%v) received, stopping", s)
 }
 
 func main() {
