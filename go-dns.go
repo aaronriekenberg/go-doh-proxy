@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -196,6 +198,7 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(expirable cache.Expirable) *dn
 
 func (dnsProxy *DNSProxy) makeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err error) {
 	const dnsMessageMIMEType = "application/dns-message"
+	const maxBodyBytes = 65535 // RFC 8484 section 6
 
 	packedRequest, err := r.Pack()
 	if err != nil {
@@ -221,11 +224,16 @@ func (dnsProxy *DNSProxy) makeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err error)
 		logger.Printf("DefaultClient.Do error %v", err)
 		return
 	}
-
 	defer httpResponse.Body.Close()
-	bodyBuffer, err := ioutil.ReadAll(httpResponse.Body)
+
+	bodyBuffer, err := ioutil.ReadAll(io.LimitReader(httpResponse.Body, maxBodyBytes+1))
 	if err != nil {
 		logger.Printf("ioutil.ReadAll error %v", err)
+		return
+	}
+
+	if len(bodyBuffer) > maxBodyBytes {
+		err = errors.New("http response body too large")
 		return
 	}
 
