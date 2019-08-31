@@ -6,9 +6,9 @@ require (
 	github.com/kr/pretty v0.1.0
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/miekg/dns v1.1.16
-	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586 // indirect
-	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7 // indirect
-	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
+	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472 // indirect
+	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297 // indirect
+	golang.org/x/sys v0.0.0-20190830142957-1e83adbbebd0 // indirect
 	golang.org/x/text v0.3.2 // indirect
-	golang.org/x/tools v0.0.0-20190825031127-d72b05d2b1b6 // indirect
+	golang.org/x/tools v0.0.0-20190830223141-573d9926052a // indirect
 )
