@@ -333,7 +333,7 @@ func (dnsProxy *DNSProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 			question := &(r.Question[0])
 			if question.Qtype == dns.TypeA {
 				msg := new(dns.Msg)
-				address, ok := dnsProxy.forwardNamesToAddresses[question.Name]
+				address, ok := dnsProxy.forwardNamesToAddresses[strings.ToLower(question.Name)]
 				if !ok {
 					msg.SetRcode(r, dns.RcodeNameError)
 					msg.Authoritative = true
