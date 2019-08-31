@@ -280,7 +280,6 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 
 		requestID := r.Id
-		responded := false
 
 		co, ok := dnsProxy.cache.Get(getQuestionCacheKey(r))
 		if ok {
@@ -288,26 +287,24 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 				dnsProxy.metrics.IncrementCacheHits()
 				cacheMessageCopy.Id = requestID
 				dnsProxy.writeResponse(w, cacheMessageCopy)
-				responded = true
-			}
-		}
-
-		if !responded {
-			dnsProxy.metrics.IncrementCacheMisses()
-			r.Id = 0
-			responseMsg, err := dnsProxy.makeHTTPRequest(r)
-			if err != nil {
-				dnsProxy.metrics.IncrementClientErrors()
-				logger.Printf("makeHttpRequest error %v", err)
-				r.Id = requestID
-				dns.HandleFailed(w, r)
 				return
 			}
-
-			dnsProxy.clampTTLAndCacheResponse(responseMsg)
-			responseMsg.Id = requestID
-			dnsProxy.writeResponse(w, responseMsg)
 		}
+
+		dnsProxy.metrics.IncrementCacheMisses()
+		r.Id = 0
+		responseMsg, err := dnsProxy.makeHTTPRequest(r)
+		if err != nil {
+			dnsProxy.metrics.IncrementClientErrors()
+			logger.Printf("makeHttpRequest error %v", err)
+			r.Id = requestID
+			dns.HandleFailed(w, r)
+			return
+		}
+
+		dnsProxy.clampTTLAndCacheResponse(responseMsg)
+		responseMsg.Id = requestID
+		dnsProxy.writeResponse(w, responseMsg)
 	}
 }
 
