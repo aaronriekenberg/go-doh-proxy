@@ -97,6 +97,7 @@ func newDOHClient(remoteHTTPURL string) *dohClient {
 func (dohClient *dohClient) MakeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err error) {
 	const dnsMessageMIMEType = "application/dns-message"
 	const maxBodyBytes = 65535 // RFC 8484 section 6
+	const requestTimeoutSeconds = 5
 
 	packedRequest, err := r.Pack()
 	if err != nil {
@@ -104,14 +105,14 @@ func (dohClient *dohClient) MakeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err erro
 		return
 	}
 
-	httpRequest, err := http.NewRequest("POST", dohClient.remoteHTTPURL, bytes.NewReader(packedRequest))
+	ctx, cancelCtx := context.WithTimeout(context.Background(), requestTimeoutSeconds*time.Second)
+	defer cancelCtx()
+
+	httpRequest, err := http.NewRequestWithContext(ctx, "POST", dohClient.remoteHTTPURL, bytes.NewReader(packedRequest))
 	if err != nil {
 		logger.Printf("NewRequest error %v", err)
 		return
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	httpRequest = httpRequest.WithContext(ctx)
 	httpRequest.Header.Set("Content-Type", dnsMessageMIMEType)
