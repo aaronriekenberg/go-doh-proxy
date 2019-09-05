@@ -114,7 +114,6 @@ func (dohClient *dohClient) MakeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err erro
 		return
 	}
 
-	httpRequest = httpRequest.WithContext(ctx)
 	httpRequest.Header.Set("Content-Type", dnsMessageMIMEType)
 	httpRequest.Header.Set("Accept", dnsMessageMIMEType)
 
