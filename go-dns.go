@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -230,7 +231,7 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(expirable cache.Expirable) *dn
 
 	adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
 		ttl := int64(rrHeader.Ttl) - secondsToSubtractFromTTL
-		if ttl <= 0 {
+		if (ttl <= 0) || (ttl > math.MaxUint32) {
 			ok = false
 		} else {
 			rrHeader.Ttl = uint32(ttl)
