@@ -94,19 +94,19 @@ func newDOHClient(remoteHTTPURL string) *dohClient {
 	}
 }
 
-func (dohClient *dohClient) MakeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err error) {
+func (dohClient *dohClient) MakeHTTPRequest(ctx context.Context, r *dns.Msg) (resp *dns.Msg, err error) {
 	const dnsMessageMIMEType = "application/dns-message"
 	const maxBodyBytes = 65535 // RFC 8484 section 6
 	const requestTimeoutSeconds = 5
+
+	ctx, cancel := context.WithTimeout(ctx, requestTimeoutSeconds*time.Second)
+	defer cancel()
 
 	packedRequest, err := r.Pack()
 	if err != nil {
 		logger.Printf("error packing request %v", err)
 		return
 	}
-
-	ctx, cancelCtx := context.WithTimeout(context.Background(), requestTimeoutSeconds*time.Second)
-	defer cancelCtx()
 
 	httpRequest, err := http.NewRequestWithContext(ctx, "POST", dohClient.remoteHTTPURL, bytes.NewReader(packedRequest))
 	if err != nil {
@@ -300,6 +300,9 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		requestID := r.Id
 
 		co, ok := dnsProxy.cache.Get(getQuestionCacheKey(r))
@@ -314,7 +317,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 		dnsProxy.metrics.IncrementCacheMisses()
 		r.Id = 0
-		responseMsg, err := dnsProxy.dohClient.MakeHTTPRequest(r)
+		responseMsg, err := dnsProxy.dohClient.MakeHTTPRequest(ctx, r)
 		if err != nil {
 			dnsProxy.metrics.IncrementClientErrors()
 			logger.Printf("makeHttpRequest error %v", err)
