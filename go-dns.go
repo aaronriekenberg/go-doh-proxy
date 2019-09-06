@@ -131,6 +131,7 @@ func (dohClient *dohClient) MakeHTTPRequest(r *dns.Msg) (resp *dns.Msg, err erro
 	}
 
 	if len(bodyBuffer) > maxBodyBytes {
+		logger.Printf("http response body too large")
 		err = errors.New("http response body too large")
 		return
 	}
