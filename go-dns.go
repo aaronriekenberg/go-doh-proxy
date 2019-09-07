@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/golang-lru"
-
 	"github.com/kr/pretty"
 	"github.com/miekg/dns"
 )
