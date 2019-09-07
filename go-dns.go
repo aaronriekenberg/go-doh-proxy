@@ -158,12 +158,12 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 
 	forwardNamesToAddresses := make(map[string]net.IP)
 	for _, forwardNameToAddress := range configuration.ForwardNamesToAddresses {
-		forwardNamesToAddresses[forwardNameToAddress.Name] = net.ParseIP(forwardNameToAddress.IPAddress)
+		forwardNamesToAddresses[strings.ToLower(forwardNameToAddress.Name)] = net.ParseIP(forwardNameToAddress.IPAddress)
 	}
 
 	reverseAddressesToNames := make(map[string]string)
 	for _, reverseAddressToName := range configuration.ReverseAddressesToNames {
-		reverseAddressesToNames[reverseAddressToName.ReverseAddress] = reverseAddressToName.Name
+		reverseAddressesToNames[strings.ToLower(reverseAddressToName.ReverseAddress)] = reverseAddressToName.Name
 	}
 
 	cache, err := lru.NewARC(configuration.MaxCacheSize)
@@ -365,7 +365,7 @@ func (dnsProxy *DNSProxy) createReverseHandlerFunc() dns.HandlerFunc {
 			question := &(r.Question[0])
 			if question.Qtype == dns.TypePTR {
 				msg := new(dns.Msg)
-				name, ok := dnsProxy.reverseAddressesToNames[question.Name]
+				name, ok := dnsProxy.reverseAddressesToNames[strings.ToLower(question.Name)]
 				if !ok {
 					msg.SetRcode(r, dns.RcodeNameError)
 					msg.Authoritative = true
