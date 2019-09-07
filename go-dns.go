@@ -81,10 +81,6 @@ func (co *cacheObject) Expired(now time.Time) bool {
 	return (now.After(co.expirationTime) || now.Equal(co.expirationTime))
 }
 
-func (co *cacheObject) ExpirationTime() time.Time {
-	return co.expirationTime
-}
-
 type dohClient struct {
 	remoteHTTPURL string
 }
