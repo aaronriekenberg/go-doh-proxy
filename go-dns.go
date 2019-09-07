@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aaronriekenberg/go-dns/cache"
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/kr/pretty"
 	"github.com/miekg/dns"
@@ -54,6 +54,7 @@ type configuration struct {
 	ReverseAddressesToNames []reverseAddressToName `json:"reverseAddressesToNames"`
 	MinTTLSeconds           uint32                 `json:"minTTLSeconds"`
 	MaxTTLSeconds           uint32                 `json:"maxTTLSeconds"`
+	MaxCacheSize            int                    `json:"maxCacheSize"`
 	TimerIntervalSeconds    int                    `json:"timerIntervalSeconds"`
 }
 
@@ -153,7 +154,7 @@ type DNSProxy struct {
 	forwardNamesToAddresses map[string]net.IP
 	reverseAddressesToNames map[string]string
 	dohClient               *dohClient
-	cache                   *cache.Cache
+	cache                   *lru.ARCCache
 	metrics                 metrics
 }
 
@@ -170,12 +171,17 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 		reverseAddressesToNames[reverseAddressToName.ReverseAddress] = reverseAddressToName.Name
 	}
 
+	cache, err := lru.NewARC(configuration.MaxCacheSize)
+	if err != nil {
+		logger.Fatalf("error creating cache %v", err)
+	}
+
 	return &DNSProxy{
 		configuration:           configuration,
 		forwardNamesToAddresses: forwardNamesToAddresses,
 		reverseAddressesToNames: reverseAddressesToNames,
 		dohClient:               newDOHClient(configuration.RemoteHTTPURL),
-		cache:                   cache.New(),
+		cache:                   cache,
 	}
 }
 
@@ -214,9 +220,9 @@ func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	return minTTLSeconds
 }
 
-func (dnsProxy *DNSProxy) copyCachedMessageForHit(expirable cache.Expirable) *dns.Msg {
+func (dnsProxy *DNSProxy) copyCachedMessageForHit(rawCacheObject interface{}) *dns.Msg {
 
-	uncopiedCacheObject, ok := expirable.(*cacheObject)
+	uncopiedCacheObject, ok := rawCacheObject.(*cacheObject)
 	if !ok {
 		return nil
 	}
@@ -416,8 +422,8 @@ func (dnsProxy *DNSProxy) runPeriodicTimer() {
 	for {
 		select {
 		case <-ticker.C:
-			logger.Printf("timerPop metrics: %v cache.Stats: %v",
-				dnsProxy.metrics.String(), dnsProxy.cache.Stats())
+			logger.Printf("timerPop metrics: %v cache.Len = %v",
+				dnsProxy.metrics.String(), dnsProxy.cache.Len())
 		}
 	}
 }
