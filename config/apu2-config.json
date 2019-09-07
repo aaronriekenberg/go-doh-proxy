@@ -36,5 +36,6 @@
   ],
   "minTTLSeconds": 300,
   "maxTTLSeconds": 3600,
+  "maxCacheSize": 20000,
   "timerIntervalSeconds": 60
 }
