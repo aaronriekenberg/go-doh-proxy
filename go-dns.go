@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/hashicorp/golang-lru"
 
 	"github.com/kr/pretty"
 	"github.com/miekg/dns"
