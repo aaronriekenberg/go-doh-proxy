@@ -149,7 +149,7 @@ type DNSProxy struct {
 	forwardNamesToAddresses map[string]net.IP
 	reverseAddressesToNames map[string]string
 	dohClient               *dohClient
-	cache                   *lru.ARCCache
+	cache                   *lru.Cache
 	metrics                 metrics
 }
 
@@ -166,7 +166,7 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 		reverseAddressesToNames[strings.ToLower(reverseAddressToName.ReverseAddress)] = reverseAddressToName.Name
 	}
 
-	cache, err := lru.NewARC(configuration.MaxCacheSize)
+	cache, err := lru.New(configuration.MaxCacheSize)
 	if err != nil {
 		logger.Fatalf("error creating cache %v", err)
 	}
