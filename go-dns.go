@@ -120,6 +120,12 @@ func (dohClient *dohClient) MakeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 	}
 	defer httpResponse.Body.Close()
 
+	if httpResponse.StatusCode != http.StatusOK {
+		err = fmt.Errorf("non 200 http response code %v", httpResponse.StatusCode)
+		io.Copy(ioutil.Discard, httpResponse.Body)
+		return
+	}
+
 	bodyBuffer, err := ioutil.ReadAll(io.LimitReader(httpResponse.Body, maxBodyBytes+1))
 	if err != nil {
 		logger.Printf("ioutil.ReadAll error %v", err)
@@ -127,7 +133,6 @@ func (dohClient *dohClient) MakeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 	}
 
 	if len(bodyBuffer) > maxBodyBytes {
-		logger.Printf("http response body too large")
 		err = errors.New("http response body too large")
 		return
 	}
