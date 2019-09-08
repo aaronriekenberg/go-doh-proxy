@@ -77,7 +77,7 @@ type cacheObject struct {
 }
 
 func (co *cacheObject) Expired(now time.Time) bool {
-	return (now.After(co.expirationTime) || now.Equal(co.expirationTime))
+	return now.After(co.expirationTime)
 }
 
 type dohClient struct {
@@ -233,11 +233,15 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(rawCacheObject interface{}) *d
 	}
 
 	secondsToSubtractFromTTL := int64(now.Sub(uncopiedCacheObject.cacheTime).Seconds())
+	if secondsToSubtractFromTTL < 0 {
+		return nil
+	}
+
 	ok = true
 
 	adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
 		ttl := int64(rrHeader.Ttl) - secondsToSubtractFromTTL
-		if (ttl <= 0) || (ttl > math.MaxUint32) {
+		if (ttl < 0) || (ttl > math.MaxUint32) {
 			ok = false
 		} else {
 			rrHeader.Ttl = uint32(ttl)
