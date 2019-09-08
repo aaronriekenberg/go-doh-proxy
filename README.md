@@ -1,4 +1,4 @@
-# go-dns
+# go-dns-proxy
 
 Simple and super useful DNS proxy server.
 
