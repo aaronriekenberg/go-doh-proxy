@@ -122,7 +122,6 @@ func (dohClient *dohClient) MakeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 
 	if httpResponse.StatusCode != http.StatusOK {
 		err = fmt.Errorf("non 200 http response code %v", httpResponse.StatusCode)
-		io.Copy(ioutil.Discard, httpResponse.Body)
 		return
 	}
 
