@@ -29,5 +29,6 @@
   "minTTLSeconds": 10,
   "maxTTLSeconds": 30,
   "maxCacheSize": 20000,
-  "timerIntervalSeconds": 10
+  "timerIntervalSeconds": 10,
+  "maxPurgesPerTimerPop": 100
 }

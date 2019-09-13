@@ -55,6 +55,7 @@ type configuration struct {
 	MaxTTLSeconds           uint32                 `json:"maxTTLSeconds"`
 	MaxCacheSize            int                    `json:"maxCacheSize"`
 	TimerIntervalSeconds    int                    `json:"timerIntervalSeconds"`
+	MaxPurgesPerTimerPop    int                    `json:"maxPurgesPerTimerPop"`
 }
 
 func getQuestionCacheKey(m *dns.Msg) string {
@@ -422,11 +423,27 @@ func (dnsProxy *DNSProxy) runServer(listenAddrAndPort, net string, serveMux *dns
 
 func (dnsProxy *DNSProxy) runPeriodicTimer() {
 	ticker := time.NewTicker(time.Second * time.Duration(dnsProxy.configuration.TimerIntervalSeconds))
+
 	for {
 		select {
 		case <-ticker.C:
-			logger.Printf("timerPop metrics: %v cache.Len = %v",
-				dnsProxy.metrics.String(), dnsProxy.cache.Len())
+			itemsPurged := 0
+			for itemsPurged < dnsProxy.configuration.MaxPurgesPerTimerPop {
+				key, value, ok := dnsProxy.cache.GetOldest()
+				if !ok {
+					break
+				}
+
+				cacheObject := value.(*cacheObject)
+
+				if cacheObject.Expired(time.Now()) {
+					dnsProxy.cache.Remove(key)
+					itemsPurged++
+				}
+			}
+
+			logger.Printf("timerPop metrics: %v cache.Len = %v itemsPurged = %v",
+				dnsProxy.metrics.String(), dnsProxy.cache.Len(), itemsPurged)
 		}
 	}
 }
