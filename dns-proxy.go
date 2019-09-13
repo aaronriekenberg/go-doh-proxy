@@ -439,6 +439,8 @@ func (dnsProxy *DNSProxy) runPeriodicTimer() {
 				if cacheObject.Expired(time.Now()) {
 					dnsProxy.cache.Remove(key)
 					itemsPurged++
+				} else {
+					break
 				}
 			}
 
