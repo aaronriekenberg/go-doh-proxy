@@ -20,8 +20,8 @@ type dnsProxy struct {
 	configuration           *Configuration
 	forwardNamesToAddresses map[string]net.IP
 	reverseAddressesToNames map[string]string
-	dohClient               *dohClient
-	cache                   *cache
+	dohClient               dohClient
+	cache                   cache
 	metrics                 metrics
 }
 

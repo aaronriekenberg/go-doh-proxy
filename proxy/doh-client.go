@@ -18,8 +18,8 @@ type dohClient struct {
 	remoteHTTPURL string
 }
 
-func newDOHClient(remoteHTTPURL string) *dohClient {
-	return &dohClient{
+func newDOHClient(remoteHTTPURL string) dohClient {
+	return dohClient{
 		remoteHTTPURL: remoteHTTPURL,
 	}
 }

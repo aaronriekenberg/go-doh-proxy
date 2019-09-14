@@ -37,13 +37,13 @@ type cache struct {
 	lruCache *lru.Cache
 }
 
-func newCache(maxCacheSize int) *cache {
+func newCache(maxCacheSize int) cache {
 	lruCache, err := lru.New(maxCacheSize)
 	if err != nil {
 		log.Fatalf("error creating cache %v", err)
 	}
 
-	return &cache{
+	return cache{
 		lruCache: lruCache,
 	}
 }
@@ -66,7 +66,7 @@ func (cache *cache) add(key string, value *cacheObject) {
 	cache.lruCache.Add(key, value)
 }
 
-func (cache *cache) len() int {
+func (cache cache) len() int {
 	return cache.lruCache.Len()
 }
 
