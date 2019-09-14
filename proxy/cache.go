@@ -66,7 +66,7 @@ func (cache *cache) add(key string, value *cacheObject) {
 	cache.lruCache.Add(key, value)
 }
 
-func (cache cache) len() int {
+func (cache *cache) len() int {
 	return cache.lruCache.Len()
 }
 
