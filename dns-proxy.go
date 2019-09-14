@@ -205,8 +205,7 @@ func (dohClient *dohClient) MakeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 	return
 }
 
-// DNSProxy is the dns proxy
-type DNSProxy struct {
+type dnsProxy struct {
 	configuration           *configuration
 	forwardNamesToAddresses map[string]net.IP
 	reverseAddressesToNames map[string]string
@@ -215,8 +214,7 @@ type DNSProxy struct {
 	metrics                 metrics
 }
 
-// NewDNSProxy creates the dns proxy.
-func NewDNSProxy(configuration *configuration) *DNSProxy {
+func newDNSProxy(configuration *configuration) *dnsProxy {
 
 	forwardNamesToAddresses := make(map[string]net.IP)
 	for _, forwardNameToAddress := range configuration.ForwardNamesToAddresses {
@@ -228,7 +226,7 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 		reverseAddressesToNames[strings.ToLower(reverseAddressToName.ReverseAddress)] = reverseAddressToName.Name
 	}
 
-	return &DNSProxy{
+	return &dnsProxy{
 		configuration:           configuration,
 		forwardNamesToAddresses: forwardNamesToAddresses,
 		reverseAddressesToNames: reverseAddressesToNames,
@@ -237,7 +235,7 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 	}
 }
 
-func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
+func (dnsProxy *dnsProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	foundRRHeaderTTL := false
 	minTTLSeconds := dnsProxy.configuration.MinTTLSeconds
 
@@ -272,7 +270,7 @@ func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	return minTTLSeconds
 }
 
-func (dnsProxy *DNSProxy) copyCachedMessageForHit(uncopiedCacheObject *cacheObject) *dns.Msg {
+func (dnsProxy *dnsProxy) copyCachedMessageForHit(uncopiedCacheObject *cacheObject) *dns.Msg {
 
 	now := time.Now()
 
@@ -318,7 +316,7 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(uncopiedCacheObject *cacheObje
 	return messageCopy
 }
 
-func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
+func (dnsProxy *dnsProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 	if !((resp.Rcode == dns.RcodeSuccess) || (resp.Rcode == dns.RcodeNameError)) {
 		return
 	}
@@ -346,14 +344,14 @@ func (dnsProxy *DNSProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 	dnsProxy.cache.Add(respQuestionCacheKey, cacheObject)
 }
 
-func (dnsProxy *DNSProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
+func (dnsProxy *dnsProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
 	if err := w.WriteMsg(r); err != nil {
 		dnsProxy.metrics.IncrementWriteResponseErrors()
 		logger.Printf("writeResponse error = %v", err)
 	}
 }
 
-func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
+func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 
@@ -389,7 +387,7 @@ func (dnsProxy *DNSProxy) createProxyHandlerFunc() dns.HandlerFunc {
 	}
 }
 
-func (dnsProxy *DNSProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
+func (dnsProxy *dnsProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) > 0 {
 			question := &(r.Question[0])
@@ -415,7 +413,7 @@ func (dnsProxy *DNSProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 	}
 }
 
-func (dnsProxy *DNSProxy) createReverseHandlerFunc() dns.HandlerFunc {
+func (dnsProxy *dnsProxy) createReverseHandlerFunc() dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) > 0 {
 			question := &(r.Question[0])
@@ -441,7 +439,7 @@ func (dnsProxy *DNSProxy) createReverseHandlerFunc() dns.HandlerFunc {
 	}
 }
 
-func (dnsProxy *DNSProxy) createServeMux() *dns.ServeMux {
+func (dnsProxy *dnsProxy) createServeMux() *dns.ServeMux {
 
 	dnsServeMux := dns.NewServeMux()
 
@@ -454,7 +452,7 @@ func (dnsProxy *DNSProxy) createServeMux() *dns.ServeMux {
 	return dnsServeMux
 }
 
-func (dnsProxy *DNSProxy) runServer(listenAddrAndPort, net string, serveMux *dns.ServeMux) {
+func (dnsProxy *dnsProxy) runServer(listenAddrAndPort, net string, serveMux *dns.ServeMux) {
 	srv := &dns.Server{
 		Handler: serveMux,
 		Addr:    listenAddrAndPort,
@@ -468,7 +466,7 @@ func (dnsProxy *DNSProxy) runServer(listenAddrAndPort, net string, serveMux *dns
 	}
 }
 
-func (dnsProxy *DNSProxy) runPeriodicTimer() {
+func (dnsProxy *dnsProxy) runPeriodicTimer() {
 	ticker := time.NewTicker(time.Second * time.Duration(dnsProxy.configuration.TimerIntervalSeconds))
 
 	for {
@@ -482,8 +480,7 @@ func (dnsProxy *DNSProxy) runPeriodicTimer() {
 	}
 }
 
-// Start starts the dns proxy.
-func (dnsProxy *DNSProxy) Start() {
+func (dnsProxy *dnsProxy) Start() {
 	listenAddressAndPort := dnsProxy.configuration.ListenAddress.JoinHostPort()
 
 	serveMux := dnsProxy.createServeMux()
@@ -526,7 +523,7 @@ func main() {
 	configuration := readConfiguration(configFile)
 	logger.Printf("configuration:\n%# v", pretty.Formatter(configuration))
 
-	dnsProxy := NewDNSProxy(configuration)
+	dnsProxy := newDNSProxy(configuration)
 	dnsProxy.Start()
 
 	awaitShutdownSignal()
