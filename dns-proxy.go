@@ -81,6 +81,63 @@ func (co *cacheObject) Expired(now time.Time) bool {
 	return now.After(co.expirationTime)
 }
 
+type cache struct {
+	lruCache *lru.Cache
+}
+
+func newCache(maxCacheSize int) *cache {
+	lruCache, err := lru.New(maxCacheSize)
+	if err != nil {
+		logger.Fatalf("error creating cache %v", err)
+	}
+
+	return &cache{
+		lruCache: lruCache,
+	}
+}
+
+func (cache *cache) Get(key string) (*cacheObject, bool) {
+	value, ok := cache.lruCache.Get(key)
+	if !ok {
+		return nil, false
+	}
+
+	cacheObject, ok := value.(*cacheObject)
+	if !ok {
+		return nil, false
+	}
+
+	return cacheObject, true
+}
+
+func (cache *cache) Add(key string, value *cacheObject) {
+	cache.lruCache.Add(key, value)
+}
+
+func (cache *cache) Len() int {
+	return cache.lruCache.Len()
+}
+
+func (cache *cache) PeriodicPurge(maxPurgeItems int) (itemsPurged int) {
+	for itemsPurged < maxPurgeItems {
+		key, value, ok := cache.lruCache.GetOldest()
+		if !ok {
+			break
+		}
+
+		cacheObject := value.(*cacheObject)
+
+		if cacheObject.Expired(time.Now()) {
+			cache.lruCache.Remove(key)
+			itemsPurged++
+		} else {
+			break
+		}
+	}
+
+	return
+}
+
 type dohClient struct {
 	remoteHTTPURL string
 }
@@ -154,7 +211,7 @@ type DNSProxy struct {
 	forwardNamesToAddresses map[string]net.IP
 	reverseAddressesToNames map[string]string
 	dohClient               *dohClient
-	cache                   *lru.Cache
+	cache                   *cache
 	metrics                 metrics
 }
 
@@ -171,17 +228,12 @@ func NewDNSProxy(configuration *configuration) *DNSProxy {
 		reverseAddressesToNames[strings.ToLower(reverseAddressToName.ReverseAddress)] = reverseAddressToName.Name
 	}
 
-	cache, err := lru.New(configuration.MaxCacheSize)
-	if err != nil {
-		logger.Fatalf("error creating cache %v", err)
-	}
-
 	return &DNSProxy{
 		configuration:           configuration,
 		forwardNamesToAddresses: forwardNamesToAddresses,
 		reverseAddressesToNames: reverseAddressesToNames,
 		dohClient:               newDOHClient(configuration.RemoteHTTPURL),
-		cache:                   cache,
+		cache:                   newCache(configuration.MaxCacheSize),
 	}
 }
 
@@ -220,12 +272,7 @@ func (dnsProxy *DNSProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	return minTTLSeconds
 }
 
-func (dnsProxy *DNSProxy) copyCachedMessageForHit(rawCacheObject interface{}) *dns.Msg {
-
-	uncopiedCacheObject, ok := rawCacheObject.(*cacheObject)
-	if !ok {
-		return nil
-	}
+func (dnsProxy *DNSProxy) copyCachedMessageForHit(uncopiedCacheObject *cacheObject) *dns.Msg {
 
 	now := time.Now()
 
@@ -238,7 +285,7 @@ func (dnsProxy *DNSProxy) copyCachedMessageForHit(rawCacheObject interface{}) *d
 		return nil
 	}
 
-	ok = true
+	ok := true
 
 	adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
 		ttl := int64(rrHeader.Ttl) - secondsToSubtractFromTTL
@@ -427,22 +474,7 @@ func (dnsProxy *DNSProxy) runPeriodicTimer() {
 	for {
 		select {
 		case <-ticker.C:
-			itemsPurged := 0
-			for itemsPurged < dnsProxy.configuration.MaxPurgesPerTimerPop {
-				key, value, ok := dnsProxy.cache.GetOldest()
-				if !ok {
-					break
-				}
-
-				cacheObject := value.(*cacheObject)
-
-				if cacheObject.Expired(time.Now()) {
-					dnsProxy.cache.Remove(key)
-					itemsPurged++
-				} else {
-					break
-				}
-			}
+			itemsPurged := dnsProxy.cache.PeriodicPurge(dnsProxy.configuration.MaxPurgesPerTimerPop)
 
 			logger.Printf("timerPop metrics: %v cache.Len = %v itemsPurged = %v",
 				dnsProxy.metrics.String(), dnsProxy.cache.Len(), itemsPurged)
