@@ -21,8 +21,6 @@ import (
 	"github.com/miekg/dns"
 )
 
-var logger = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lmicroseconds)
-
 type dohClient struct {
 	remoteHTTPURL string
 }
@@ -43,13 +41,13 @@ func (dohClient *dohClient) MakeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 
 	packedRequest, err := r.Pack()
 	if err != nil {
-		logger.Printf("error packing request %v", err)
+		log.Printf("error packing request %v", err)
 		return
 	}
 
 	httpRequest, err := http.NewRequestWithContext(ctx, "POST", dohClient.remoteHTTPURL, bytes.NewReader(packedRequest))
 	if err != nil {
-		logger.Printf("NewRequest error %v", err)
+		log.Printf("NewRequest error %v", err)
 		return
 	}
 
@@ -58,7 +56,7 @@ func (dohClient *dohClient) MakeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 
 	httpResponse, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
-		logger.Printf("DefaultClient.Do error %v", err)
+		log.Printf("DefaultClient.Do error %v", err)
 		return
 	}
 	defer httpResponse.Body.Close()
@@ -70,7 +68,7 @@ func (dohClient *dohClient) MakeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 
 	bodyBuffer, err := ioutil.ReadAll(io.LimitReader(httpResponse.Body, maxBodyBytes+1))
 	if err != nil {
-		logger.Printf("ioutil.ReadAll error %v", err)
+		log.Printf("ioutil.ReadAll error %v", err)
 		return
 	}
 
@@ -82,7 +80,7 @@ func (dohClient *dohClient) MakeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 	resp = new(dns.Msg)
 	err = resp.Unpack(bodyBuffer)
 	if err != nil {
-		logger.Printf("Unpack error %v", err)
+		log.Printf("Unpack error %v", err)
 		resp = nil
 		return
 	}
@@ -232,7 +230,7 @@ func (dnsProxy *dnsProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 func (dnsProxy *dnsProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
 	if err := w.WriteMsg(r); err != nil {
 		dnsProxy.metrics.IncrementWriteResponseErrors()
-		logger.Printf("writeResponse error = %v", err)
+		log.Printf("writeResponse error = %v", err)
 	}
 }
 
@@ -260,7 +258,7 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		responseMsg, err := dnsProxy.dohClient.MakeHTTPRequest(ctx, r)
 		if err != nil {
 			dnsProxy.metrics.IncrementClientErrors()
-			logger.Printf("makeHttpRequest error %v", err)
+			log.Printf("makeHttpRequest error %v", err)
 			r.Id = requestID
 			dns.HandleFailed(w, r)
 			return
@@ -344,10 +342,10 @@ func (dnsProxy *dnsProxy) runServer(listenAddrAndPort, net string, serveMux *dns
 		Net:     net,
 	}
 
-	logger.Printf("starting %v server on %v", net, listenAddrAndPort)
+	log.Printf("starting %v server on %v", net, listenAddrAndPort)
 
 	if err := srv.ListenAndServe(); err != nil {
-		logger.Fatalf("ListenAndServe error for net %s: %v", net, err)
+		log.Fatalf("ListenAndServe error for net %s: %v", net, err)
 	}
 }
 
@@ -359,7 +357,7 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 		case <-ticker.C:
 			itemsPurged := dnsProxy.cache.PeriodicPurge(dnsProxy.configuration.MaxPurgesPerTimerPop)
 
-			logger.Printf("timerPop metrics: %v cache.Len = %v itemsPurged = %v",
+			log.Printf("timerPop metrics: %v cache.Len = %v itemsPurged = %v",
 				dnsProxy.metrics.String(), dnsProxy.cache.Len(), itemsPurged)
 		}
 	}
@@ -380,17 +378,19 @@ func awaitShutdownSignal() {
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	s := <-sig
-	logger.Fatalf("Signal (%v) received, stopping", s)
+	log.Fatalf("Signal (%v) received, stopping", s)
 }
 
 func main() {
+	log.SetFlags(log.Ldate|log.Ltime|log.Lmicroseconds)
+
 	if len(os.Args) != 2 {
-		logger.Fatalf("Usage: %v <config json file>", os.Args[0])
+		log.Fatalf("Usage: %v <config json file>", os.Args[0])
 	}
 
 	configFile := os.Args[1]
 	configuration := readConfiguration(configFile)
-	logger.Printf("configuration:\n%# v", pretty.Formatter(configuration))
+	log.Printf("configuration:\n%# v", pretty.Formatter(configuration))
 
 	dnsProxy := newDNSProxy(configuration)
 	dnsProxy.Start()

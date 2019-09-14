@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net"
 )
 
@@ -40,16 +41,16 @@ type configuration struct {
 }
 
 func readConfiguration(configFile string) *configuration {
-	logger.Printf("reading json file %v", configFile)
+	log.Printf("reading json file %v", configFile)
 
 	source, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		logger.Fatalf("error reading %v: %v", configFile, err)
+		log.Fatalf("error reading %v: %v", configFile, err)
 	}
 
 	var config configuration
 	if err = json.Unmarshal(source, &config); err != nil {
-		logger.Fatalf("error parsing %v: %v", configFile, err)
+		log.Fatalf("error parsing %v: %v", configFile, err)
 	}
 
 	return &config

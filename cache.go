@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -39,7 +40,7 @@ type cache struct {
 func newCache(maxCacheSize int) *cache {
 	lruCache, err := lru.New(maxCacheSize)
 	if err != nil {
-		logger.Fatalf("error creating cache %v", err)
+		log.Fatalf("error creating cache %v", err)
 	}
 
 	return &cache{
