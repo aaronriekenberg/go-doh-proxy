@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,125 +17,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hashicorp/golang-lru"
 	"github.com/kr/pretty"
 	"github.com/miekg/dns"
 )
 
 var logger = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lmicroseconds)
-
-type hostAndPort struct {
-	Host string `json:"host"`
-	Port string `json:"port"`
-}
-
-func (hostAndPort *hostAndPort) JoinHostPort() string {
-	return net.JoinHostPort(hostAndPort.Host, hostAndPort.Port)
-}
-
-type forwardNameToAddress struct {
-	Name      string `json:"name"`
-	IPAddress string `json:"ipAddress"`
-}
-
-type reverseAddressToName struct {
-	ReverseAddress string `json:"reverseAddress"`
-	Name           string `json:"name"`
-}
-
-type configuration struct {
-	ListenAddress           hostAndPort            `json:"listenAddress"`
-	RemoteHTTPURL           string                 `json:"remoteHTTPURL"`
-	ForwardDomain           string                 `json:"forwardDomain"`
-	ForwardNamesToAddresses []forwardNameToAddress `json:"forwardNamesToAddresses"`
-	ReverseDomain           string                 `json:"reverseDomain"`
-	ReverseAddressesToNames []reverseAddressToName `json:"reverseAddressesToNames"`
-	MinTTLSeconds           uint32                 `json:"minTTLSeconds"`
-	MaxTTLSeconds           uint32                 `json:"maxTTLSeconds"`
-	MaxCacheSize            int                    `json:"maxCacheSize"`
-	TimerIntervalSeconds    int                    `json:"timerIntervalSeconds"`
-	MaxPurgesPerTimerPop    int                    `json:"maxPurgesPerTimerPop"`
-}
-
-func getQuestionCacheKey(m *dns.Msg) string {
-	var builder strings.Builder
-
-	for i, question := range m.Question {
-		if i > 0 {
-			builder.WriteByte('|')
-		}
-		fmt.Fprintf(&builder, "%s:%d:%d", strings.ToLower(question.Name), question.Qtype, question.Qclass)
-	}
-
-	return builder.String()
-}
-
-type cacheObject struct {
-	cacheTime      time.Time
-	expirationTime time.Time
-	message        dns.Msg
-}
-
-func (co *cacheObject) Expired(now time.Time) bool {
-	return now.After(co.expirationTime)
-}
-
-type cache struct {
-	lruCache *lru.Cache
-}
-
-func newCache(maxCacheSize int) *cache {
-	lruCache, err := lru.New(maxCacheSize)
-	if err != nil {
-		logger.Fatalf("error creating cache %v", err)
-	}
-
-	return &cache{
-		lruCache: lruCache,
-	}
-}
-
-func (cache *cache) Get(key string) (*cacheObject, bool) {
-	value, ok := cache.lruCache.Get(key)
-	if !ok {
-		return nil, false
-	}
-
-	cacheObject, ok := value.(*cacheObject)
-	if !ok {
-		return nil, false
-	}
-
-	return cacheObject, true
-}
-
-func (cache *cache) Add(key string, value *cacheObject) {
-	cache.lruCache.Add(key, value)
-}
-
-func (cache *cache) Len() int {
-	return cache.lruCache.Len()
-}
-
-func (cache *cache) PeriodicPurge(maxPurgeItems int) (itemsPurged int) {
-	for itemsPurged < maxPurgeItems {
-		key, value, ok := cache.lruCache.GetOldest()
-		if !ok {
-			break
-		}
-
-		cacheObject := value.(*cacheObject)
-
-		if cacheObject.Expired(time.Now()) {
-			cache.lruCache.Remove(key)
-			itemsPurged++
-		} else {
-			break
-		}
-	}
-
-	return
-}
 
 type dohClient struct {
 	remoteHTTPURL string
@@ -489,22 +374,6 @@ func (dnsProxy *dnsProxy) Start() {
 	go dnsProxy.runServer(listenAddressAndPort, "udp", serveMux)
 
 	go dnsProxy.runPeriodicTimer()
-}
-
-func readConfiguration(configFile string) *configuration {
-	logger.Printf("reading json file %v", configFile)
-
-	source, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		logger.Fatalf("error reading %v: %v", configFile, err)
-	}
-
-	var config configuration
-	if err = json.Unmarshal(source, &config); err != nil {
-		logger.Fatalf("error parsing %v: %v", configFile, err)
-	}
-
-	return &config
 }
 
 func awaitShutdownSignal() {
