@@ -1,4 +1,4 @@
-package main
+package proxy
 
 import (
 	"fmt"
@@ -29,7 +29,7 @@ type cacheObject struct {
 	message        dns.Msg
 }
 
-func (co *cacheObject) Expired(now time.Time) bool {
+func (co *cacheObject) expired(now time.Time) bool {
 	return now.After(co.expirationTime)
 }
 
@@ -48,7 +48,7 @@ func newCache(maxCacheSize int) *cache {
 	}
 }
 
-func (cache *cache) Get(key string) (*cacheObject, bool) {
+func (cache *cache) get(key string) (*cacheObject, bool) {
 	value, ok := cache.lruCache.Get(key)
 	if !ok {
 		return nil, false
@@ -62,15 +62,15 @@ func (cache *cache) Get(key string) (*cacheObject, bool) {
 	return cacheObject, true
 }
 
-func (cache *cache) Add(key string, value *cacheObject) {
+func (cache *cache) add(key string, value *cacheObject) {
 	cache.lruCache.Add(key, value)
 }
 
-func (cache *cache) Len() int {
+func (cache *cache) len() int {
 	return cache.lruCache.Len()
 }
 
-func (cache *cache) PeriodicPurge(maxPurgeItems int) (itemsPurged int) {
+func (cache *cache) periodicPurge(maxPurgeItems int) (itemsPurged int) {
 	for itemsPurged < maxPurgeItems {
 		key, value, ok := cache.lruCache.GetOldest()
 		if !ok {
@@ -79,7 +79,7 @@ func (cache *cache) PeriodicPurge(maxPurgeItems int) (itemsPurged int) {
 
 		cacheObject := value.(*cacheObject)
 
-		if cacheObject.Expired(time.Now()) {
+		if cacheObject.expired(time.Now()) {
 			cache.lruCache.Remove(key)
 			itemsPurged++
 		} else {

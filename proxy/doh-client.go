@@ -1,4 +1,4 @@
-package main
+package proxy
 
 import (
 	"bytes"
@@ -24,7 +24,7 @@ func newDOHClient(remoteHTTPURL string) *dohClient {
 	}
 }
 
-func (dohClient *dohClient) MakeHTTPRequest(ctx context.Context, r *dns.Msg) (resp *dns.Msg, err error) {
+func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (resp *dns.Msg, err error) {
 	const dnsMessageMIMEType = "application/dns-message"
 	const maxBodyBytes = 65535 // RFC 8484 section 6
 	const requestTimeoutSeconds = 5

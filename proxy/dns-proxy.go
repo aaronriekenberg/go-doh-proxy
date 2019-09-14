@@ -1,4 +1,4 @@
-package main
+package proxy
 
 import (
 	"context"
@@ -11,8 +11,13 @@ import (
 	"github.com/miekg/dns"
 )
 
+// DNSProxy is the DNS proxy.
+type DNSProxy interface {
+	Start()
+}
+
 type dnsProxy struct {
-	configuration           *configuration
+	configuration           *Configuration
 	forwardNamesToAddresses map[string]net.IP
 	reverseAddressesToNames map[string]string
 	dohClient               *dohClient
@@ -20,7 +25,8 @@ type dnsProxy struct {
 	metrics                 metrics
 }
 
-func newDNSProxy(configuration *configuration) *dnsProxy {
+// NewDNSProxy creates a DNS proxy.
+func NewDNSProxy(configuration *Configuration) DNSProxy {
 
 	forwardNamesToAddresses := make(map[string]net.IP)
 	for _, forwardNameToAddress := range configuration.ForwardNamesToAddresses {
@@ -80,7 +86,7 @@ func (dnsProxy *dnsProxy) copyCachedMessageForHit(uncopiedCacheObject *cacheObje
 
 	now := time.Now()
 
-	if uncopiedCacheObject.Expired(now) {
+	if uncopiedCacheObject.expired(now) {
 		return nil
 	}
 
@@ -147,12 +153,12 @@ func (dnsProxy *dnsProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 	}
 	resp.CopyTo(&cacheObject.message)
 
-	dnsProxy.cache.Add(respQuestionCacheKey, cacheObject)
+	dnsProxy.cache.add(respQuestionCacheKey, cacheObject)
 }
 
 func (dnsProxy *dnsProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
 	if err := w.WriteMsg(r); err != nil {
-		dnsProxy.metrics.IncrementWriteResponseErrors()
+		dnsProxy.metrics.incrementWriteResponseErrors()
 		log.Printf("writeResponse error = %v", err)
 	}
 }
@@ -166,21 +172,21 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 		requestID := r.Id
 
-		co, ok := dnsProxy.cache.Get(getQuestionCacheKey(r))
+		co, ok := dnsProxy.cache.get(getQuestionCacheKey(r))
 		if ok {
 			if cacheMessageCopy := dnsProxy.copyCachedMessageForHit(co); cacheMessageCopy != nil {
-				dnsProxy.metrics.IncrementCacheHits()
+				dnsProxy.metrics.incrementCacheHits()
 				cacheMessageCopy.Id = requestID
 				dnsProxy.writeResponse(w, cacheMessageCopy)
 				return
 			}
 		}
 
-		dnsProxy.metrics.IncrementCacheMisses()
+		dnsProxy.metrics.incrementCacheMisses()
 		r.Id = 0
-		responseMsg, err := dnsProxy.dohClient.MakeHTTPRequest(ctx, r)
+		responseMsg, err := dnsProxy.dohClient.makeHTTPRequest(ctx, r)
 		if err != nil {
-			dnsProxy.metrics.IncrementClientErrors()
+			dnsProxy.metrics.incrementClientErrors()
 			log.Printf("makeHttpRequest error %v", err)
 			r.Id = requestID
 			dns.HandleFailed(w, r)
@@ -278,10 +284,10 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 	for {
 		select {
 		case <-ticker.C:
-			itemsPurged := dnsProxy.cache.PeriodicPurge(dnsProxy.configuration.MaxPurgesPerTimerPop)
+			itemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.MaxPurgesPerTimerPop)
 
-			log.Printf("timerPop metrics: %v cache.Len = %v itemsPurged = %v",
-				dnsProxy.metrics.String(), dnsProxy.cache.Len(), itemsPurged)
+			log.Printf("timerPop metrics: %v cache.len = %v itemsPurged = %v",
+				&dnsProxy.metrics, dnsProxy.cache.len(), itemsPurged)
 		}
 	}
 }

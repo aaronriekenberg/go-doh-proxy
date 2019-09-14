@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/aaronriekenberg/go-dns-proxy/proxy"
 	"github.com/kr/pretty"
 )
 
@@ -24,10 +25,10 @@ func main() {
 	}
 
 	configFile := os.Args[1]
-	configuration := readConfiguration(configFile)
+	configuration := proxy.ReadConfiguration(configFile)
 	log.Printf("configuration:\n%# v", pretty.Formatter(configuration))
 
-	dnsProxy := newDNSProxy(configuration)
+	dnsProxy := proxy.NewDNSProxy(configuration)
 	dnsProxy.Start()
 
 	awaitShutdownSignal()
