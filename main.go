@@ -25,7 +25,10 @@ func main() {
 	}
 
 	configFile := os.Args[1]
-	configuration := proxy.ReadConfiguration(configFile)
+	configuration, err := proxy.ReadConfiguration(configFile)
+	if err != nil {
+		log.Fatalf("error reading configuration %v", err)
+	}
 	log.Printf("configuration:\n%# v", pretty.Formatter(configuration))
 
 	dnsProxy := proxy.NewDNSProxy(configuration)

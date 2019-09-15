@@ -46,18 +46,18 @@ type Configuration struct {
 }
 
 // ReadConfiguration reads the DNS proxy configuration from a json file.
-func ReadConfiguration(configFile string) *Configuration {
-	log.Printf("reading json file %v", configFile)
+func ReadConfiguration(configFile string) (*Configuration, error) {
+	log.Printf("reading config file %q", configFile)
 
 	source, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		log.Fatalf("error reading %v: %v", configFile, err)
+		return nil, err
 	}
 
 	var config Configuration
 	if err = json.Unmarshal(source, &config); err != nil {
-		log.Fatalf("error parsing %v: %v", configFile, err)
+		return nil, err
 	}
 
-	return &config
+	return &config, nil
 }
