@@ -14,7 +14,7 @@ type HostAndPort struct {
 }
 
 // JoinHostPort joins the host and port.
-func (hostAndPort *HostAndPort) JoinHostPort() string {
+func (hostAndPort *HostAndPort) joinHostPort() string {
 	return net.JoinHostPort(hostAndPort.Host, hostAndPort.Port)
 }
 

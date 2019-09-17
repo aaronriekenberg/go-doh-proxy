@@ -293,7 +293,7 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 }
 
 func (dnsProxy *dnsProxy) Start() {
-	listenAddressAndPort := dnsProxy.configuration.ListenAddress.JoinHostPort()
+	listenAddressAndPort := dnsProxy.configuration.ListenAddress.joinHostPort()
 
 	serveMux := dnsProxy.createServeMux()
 
