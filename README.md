@@ -1,6 +1,6 @@
-# go-dns-proxy
+# go-doh-proxy
 
-Simple and super useful DNS proxy server.
+Simple and super useful DNS over HTTPS proxy server.
 
 Tech Stack:
 * [mikeg/dns](https://github.com/miekg/dns) library for local dns server (udp and tcp).
