@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/aaronriekenberg/go-dns-proxy/proxy"
+	"github.com/aaronriekenberg/go-doh-proxy/proxy"
 	"github.com/kr/pretty"
 )
 

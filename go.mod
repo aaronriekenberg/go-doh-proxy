@@ -1,4 +1,4 @@
-module github.com/aaronriekenberg/go-dns-proxy
+module github.com/aaronriekenberg/go-doh-proxy
 
 go 1.13
 
@@ -7,7 +7,7 @@ require (
 	github.com/kr/pretty v0.1.0
 	github.com/miekg/dns v1.1.17
 	golang.org/x/crypto v0.0.0-20190911031432-227b76d455e7 // indirect
-	golang.org/x/net v0.0.0-20190918130420-a8b05e9114ab // indirect
+	golang.org/x/net v0.0.0-20190921015927-1a5e07d1ff72 // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
-	golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3 // indirect
+	golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380 // indirect
 )
