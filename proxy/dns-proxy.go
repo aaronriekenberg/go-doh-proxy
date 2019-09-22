@@ -82,7 +82,12 @@ func (dnsProxy *dnsProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	return minTTLSeconds
 }
 
-func (dnsProxy *dnsProxy) copyCachedMessageForHit(uncopiedCacheObject *cacheObject) *dns.Msg {
+func (dnsProxy *dnsProxy) getCachedMessageCopyForHit(cacheKey string) *dns.Msg {
+
+	uncopiedCacheObject, ok := dnsProxy.cache.get(cacheKey)
+	if !ok {
+		return nil
+	}
 
 	now := time.Now()
 
@@ -95,7 +100,7 @@ func (dnsProxy *dnsProxy) copyCachedMessageForHit(uncopiedCacheObject *cacheObje
 		return nil
 	}
 
-	ok := true
+	ok = true
 
 	adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
 		ttl := int64(rrHeader.Ttl) - secondsToSubtractFromTTL
@@ -172,14 +177,11 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		requestID := r.Id
 		cacheKey := getCacheKey(r)
 
-		co, ok := dnsProxy.cache.get(cacheKey)
-		if ok {
-			if cacheMessageCopy := dnsProxy.copyCachedMessageForHit(co); cacheMessageCopy != nil {
-				dnsProxy.metrics.incrementCacheHits()
-				cacheMessageCopy.Id = requestID
-				dnsProxy.writeResponse(w, cacheMessageCopy)
-				return
-			}
+		if cacheMessageCopy := dnsProxy.getCachedMessageCopyForHit(cacheKey); cacheMessageCopy != nil {
+			dnsProxy.metrics.incrementCacheHits()
+			cacheMessageCopy.Id = requestID
+			dnsProxy.writeResponse(w, cacheMessageCopy)
+			return
 		}
 
 		dnsProxy.metrics.incrementCacheMisses()
