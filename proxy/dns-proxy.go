@@ -156,6 +156,7 @@ func (dnsProxy *dnsProxy) clampTTLAndCacheResponse(cacheKey string, resp *dns.Ms
 		expirationTime: expirationTime,
 	}
 	resp.CopyTo(&cacheObject.message)
+	cacheObject.message.Id = 0
 
 	dnsProxy.cache.add(cacheKey, cacheObject)
 }
