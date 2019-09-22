@@ -1,3 +1,3 @@
-go-dns-proxy
+go-doh-proxy
 *.swp
 logs/output*
