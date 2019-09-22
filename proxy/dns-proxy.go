@@ -128,7 +128,7 @@ func (dnsProxy *dnsProxy) copyCachedMessageForHit(uncopiedCacheObject *cacheObje
 	return messageCopy
 }
 
-func (dnsProxy *dnsProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
+func (dnsProxy *dnsProxy) clampTTLAndCacheResponse(cacheKey string, resp *dns.Msg) {
 	if !((resp.Rcode == dns.RcodeSuccess) || (resp.Rcode == dns.RcodeNameError)) {
 		return
 	}
@@ -138,8 +138,7 @@ func (dnsProxy *dnsProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 		return
 	}
 
-	respQuestionCacheKey := getQuestionCacheKey(resp)
-	if len(respQuestionCacheKey) == 0 {
+	if len(cacheKey) == 0 {
 		return
 	}
 
@@ -153,7 +152,7 @@ func (dnsProxy *dnsProxy) clampTTLAndCacheResponse(resp *dns.Msg) {
 	}
 	resp.CopyTo(&cacheObject.message)
 
-	dnsProxy.cache.add(respQuestionCacheKey, cacheObject)
+	dnsProxy.cache.add(cacheKey, cacheObject)
 }
 
 func (dnsProxy *dnsProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
@@ -171,8 +170,9 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		defer cancel()
 
 		requestID := r.Id
+		cacheKey := getCacheKey(r)
 
-		co, ok := dnsProxy.cache.get(getQuestionCacheKey(r))
+		co, ok := dnsProxy.cache.get(cacheKey)
 		if ok {
 			if cacheMessageCopy := dnsProxy.copyCachedMessageForHit(co); cacheMessageCopy != nil {
 				dnsProxy.metrics.incrementCacheHits()
@@ -193,7 +193,7 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 			return
 		}
 
-		dnsProxy.clampTTLAndCacheResponse(responseMsg)
+		dnsProxy.clampTTLAndCacheResponse(cacheKey, responseMsg)
 		responseMsg.Id = requestID
 		dnsProxy.writeResponse(w, responseMsg)
 	}

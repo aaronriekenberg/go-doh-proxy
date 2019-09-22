@@ -10,14 +10,32 @@ import (
 	"github.com/miekg/dns"
 )
 
-func getQuestionCacheKey(m *dns.Msg) string {
+func getCacheKey(m *dns.Msg) string {
+	if len(m.Question) == 0 {
+		return ""
+	}
+
 	var builder strings.Builder
 
-	for i, question := range m.Question {
-		if i > 0 {
-			builder.WriteByte('|')
+	doSet := false
+	for _, extra := range m.Extra {
+		if extra.Header().Rrtype == dns.TypeOPT {
+			opt, ok := extra.(*dns.OPT)
+			if ok && opt.Do() {
+				doSet = true
+				break
+			}
 		}
-		fmt.Fprintf(&builder, "%s:%d:%d", strings.ToLower(question.Name), question.Qtype, question.Qclass)
+	}
+
+	if !doSet {
+		builder.WriteByte('0')
+	} else {
+		builder.WriteByte('1')
+	}
+
+	for _, question := range m.Question {
+		fmt.Fprintf(&builder, "|%s:%d:%d", strings.ToLower(question.Name), question.Qtype, question.Qclass)
 	}
 
 	return builder.String()
