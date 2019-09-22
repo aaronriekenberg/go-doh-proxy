@@ -3,7 +3,6 @@ package proxy
 import (
 	"context"
 	"log"
-	"math"
 	"net"
 	"strings"
 	"time"
@@ -95,7 +94,7 @@ func (dnsProxy *dnsProxy) getCachedMessageCopyForHit(cacheKey string) *dns.Msg {
 		return nil
 	}
 
-	secondsToSubtractFromTTL := int64(now.Sub(uncopiedCacheObject.cacheTime).Seconds())
+	secondsToSubtractFromTTL := int64(now.Sub(uncopiedCacheObject.cacheTime) / time.Second)
 	if secondsToSubtractFromTTL < 0 {
 		return nil
 	}
@@ -103,11 +102,12 @@ func (dnsProxy *dnsProxy) getCachedMessageCopyForHit(cacheKey string) *dns.Msg {
 	ok = true
 
 	adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
-		ttl := int64(rrHeader.Ttl) - secondsToSubtractFromTTL
-		if (ttl < 0) || (ttl > math.MaxUint32) {
+		originalTTL := int64(rrHeader.Ttl)
+		if secondsToSubtractFromTTL > originalTTL {
 			ok = false
 		} else {
-			rrHeader.Ttl = uint32(ttl)
+			newTTL := originalTTL - secondsToSubtractFromTTL
+			rrHeader.Ttl = uint32(newTTL)
 		}
 	}
 
