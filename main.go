@@ -10,6 +10,8 @@ import (
 	"github.com/kr/pretty"
 )
 
+var GitCommit string
+
 func awaitShutdownSignal() {
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
@@ -19,6 +21,8 @@ func awaitShutdownSignal() {
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+
+	log.Printf("GitCommit: %v", GitCommit)
 
 	if len(os.Args) != 2 {
 		log.Fatalf("Usage: %v <config json file>", os.Args[0])
