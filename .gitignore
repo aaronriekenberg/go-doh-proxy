@@ -1,3 +1,4 @@
 go-doh-proxy
+go-doh-proxy-linux*
 *.swp
 logs/output*
