@@ -94,15 +94,12 @@ func (dnsProxy *dnsProxy) getCachedMessageCopyForHit(cacheKey string) *dns.Msg {
 		return nil
 	}
 
-	secondsToSubtractFromTTL := int64(now.Sub(uncopiedCacheObject.cacheTime) / time.Second)
-	if secondsToSubtractFromTTL < 0 {
-		return nil
-	}
+	secondsToSubtractFromTTL := uint64(uncopiedCacheObject.durationInCache(now) / time.Second)
 
 	ok = true
 
 	adjustRRHeaderTTL := func(rrHeader *dns.RR_Header) {
-		originalTTL := int64(rrHeader.Ttl)
+		originalTTL := uint64(rrHeader.Ttl)
 		if secondsToSubtractFromTTL > originalTTL {
 			ok = false
 		} else {

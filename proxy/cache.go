@@ -51,6 +51,10 @@ func (co *cacheObject) expired(now time.Time) bool {
 	return now.After(co.expirationTime)
 }
 
+func (co *cacheObject) durationInCache(now time.Time) time.Duration {
+	return now.Sub(co.cacheTime)
+}
+
 type cache struct {
 	lruCache *lru.Cache
 }
