@@ -46,6 +46,7 @@ func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 
 	httpRequest.Header.Set("Content-Type", dnsMessageMIMEType)
 	httpRequest.Header.Set("Accept", dnsMessageMIMEType)
+	httpRequest.Header.Set("User-Agent", "")
 
 	httpResponse, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
