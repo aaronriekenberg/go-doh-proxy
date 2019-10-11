@@ -201,54 +201,71 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 func (dnsProxy *dnsProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
-		if len(r.Question) > 0 {
-			question := &(r.Question[0])
-			if question.Qtype == dns.TypeA {
-				msg := new(dns.Msg)
-				address, ok := dnsProxy.forwardNamesToAddresses[strings.ToLower(question.Name)]
-				if !ok {
-					msg.SetRcode(r, dns.RcodeNameError)
-					msg.Authoritative = true
-				} else {
-					msg.SetReply(r)
-					msg.Authoritative = true
-					msg.Answer = append(msg.Answer, &dns.A{
-						Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
-						A:   address,
-					})
-				}
-				dnsProxy.writeResponse(w, msg)
-				return
-			}
+		if len(r.Question) == 0 {
+			dns.HandleFailed(w, r)
+			return
 		}
-		dns.HandleFailed(w, r)
+
+		question := &(r.Question[0])
+		responseMsg := new(dns.Msg)
+		if question.Qtype != dns.TypeA {
+			responseMsg.SetRcode(r, dns.RcodeNameError)
+			responseMsg.Authoritative = true
+			dnsProxy.writeResponse(w, responseMsg)
+			return
+		}
+
+		address, ok := dnsProxy.forwardNamesToAddresses[strings.ToLower(question.Name)]
+		if !ok {
+			responseMsg.SetRcode(r, dns.RcodeNameError)
+			responseMsg.Authoritative = true
+			dnsProxy.writeResponse(w, responseMsg)
+			return
+		}
+
+		responseMsg.SetReply(r)
+		responseMsg.Authoritative = true
+		responseMsg.Answer = append(responseMsg.Answer, &dns.A{
+			Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
+			A:   address,
+		})
+		dnsProxy.writeResponse(w, responseMsg)
 	}
 }
 
 func (dnsProxy *dnsProxy) createReverseHandlerFunc() dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
-		if len(r.Question) > 0 {
-			question := &(r.Question[0])
-			if question.Qtype == dns.TypePTR {
-				msg := new(dns.Msg)
-				name, ok := dnsProxy.reverseAddressesToNames[strings.ToLower(question.Name)]
-				if !ok {
-					msg.SetRcode(r, dns.RcodeNameError)
-					msg.Authoritative = true
-				} else {
-					msg.SetReply(r)
-					msg.Authoritative = true
-					msg.Answer = append(msg.Answer, &dns.PTR{
-						Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypePTR, Class: dns.ClassINET, Ttl: 60},
-						Ptr: name,
-					})
-				}
-				dnsProxy.writeResponse(w, msg)
-				return
-			}
+		if len(r.Question) == 0 {
+			dns.HandleFailed(w, r)
+			return
 		}
-		dns.HandleFailed(w, r)
+
+		question := &(r.Question[0])
+		responseMsg := new(dns.Msg)
+		if question.Qtype != dns.TypePTR {
+			responseMsg.SetRcode(r, dns.RcodeNameError)
+			responseMsg.Authoritative = true
+			dnsProxy.writeResponse(w, responseMsg)
+			return
+		}
+
+		name, ok := dnsProxy.reverseAddressesToNames[strings.ToLower(question.Name)]
+		if !ok {
+			responseMsg.SetRcode(r, dns.RcodeNameError)
+			responseMsg.Authoritative = true
+			dnsProxy.writeResponse(w, responseMsg)
+			return
+		}
+
+		responseMsg.SetReply(r)
+		responseMsg.Authoritative = true
+		responseMsg.Answer = append(responseMsg.Answer, &dns.PTR{
+			Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypePTR, Class: dns.ClassINET, Ttl: 60},
+			Ptr: name,
+		})
+		dnsProxy.writeResponse(w, responseMsg)
 	}
+
 }
 
 func (dnsProxy *dnsProxy) createServeMux() *dns.ServeMux {
