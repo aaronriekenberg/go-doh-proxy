@@ -1,0 +1,12 @@
+# ~/.config/systemd/user/go-doh-proxy.service
+
+[Unit]
+AssertPathExists=%h/go-doh-proxy/go-doh-proxy
+
+[Service]
+WorkingDirectory=%h/go-doh-proxy
+ExecStart=%h/go-doh-proxy/go-doh-proxy ./config/%H-config.json
+Restart=always
+
+[Install]
+WantedBy=default.target
