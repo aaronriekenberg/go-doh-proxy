@@ -40,8 +40,8 @@ type Configuration struct {
 	ReverseDomain             string                 `json:"reverseDomain"`
 	ReverseAddressesToNames   []ReverseAddressToName `json:"reverseAddressesToNames"`
 	ReverseResponseTTLSeconds uint32                 `json:"reverseResponseTTLSeconds"`
-	MinTTLSeconds             uint32                 `json:"minTTLSeconds"`
-	MaxTTLSeconds             uint32                 `json:"maxTTLSeconds"`
+	ProxyMinTTLSeconds        uint32                 `json:"proxyMinTTLSeconds"`
+	ProxyMaxTTLSeconds        uint32                 `json:"proxyMaxTTLSeconds"`
 	MaxCacheSize              int                    `json:"maxCacheSize"`
 	TimerIntervalSeconds      int                    `json:"timerIntervalSeconds"`
 	MaxPurgesPerTimerPop      int                    `json:"maxPurgesPerTimerPop"`

@@ -28,8 +28,8 @@
     }
   ],
   "reverseResponseTTLSeconds": 60,
-  "minTTLSeconds": 10,
-  "maxTTLSeconds": 30,
+  "proxyMinTTLSeconds": 10,
+  "proxyMaxTTLSeconds": 30,
   "maxCacheSize": 20000,
   "timerIntervalSeconds": 10,
   "maxPurgesPerTimerPop": 100
