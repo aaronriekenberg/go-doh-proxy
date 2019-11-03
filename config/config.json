@@ -32,5 +32,5 @@
   "proxyMaxTTLSeconds": 30,
   "maxCacheSize": 20000,
   "timerIntervalSeconds": 10,
-  "maxPurgesPerTimerPop": 100
+  "maxCachePurgesPerTimerPop": 100
 }

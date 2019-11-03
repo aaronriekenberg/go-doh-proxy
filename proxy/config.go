@@ -44,7 +44,7 @@ type Configuration struct {
 	ProxyMaxTTLSeconds        uint32                 `json:"proxyMaxTTLSeconds"`
 	MaxCacheSize              int                    `json:"maxCacheSize"`
 	TimerIntervalSeconds      int                    `json:"timerIntervalSeconds"`
-	MaxPurgesPerTimerPop      int                    `json:"maxPurgesPerTimerPop"`
+	MaxCachePurgesPerTimerPop int                    `json:"maxCachePurgesPerTimerPop"`
 }
 
 // ReadConfiguration reads the DNS proxy configuration from a json file.

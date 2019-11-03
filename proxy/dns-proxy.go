@@ -311,7 +311,7 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 	for {
 		select {
 		case <-ticker.C:
-			itemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.MaxPurgesPerTimerPop)
+			itemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.MaxCachePurgesPerTimerPop)
 
 			log.Printf("timerPop metrics: %v cache.len = %v itemsPurged = %v",
 				&dnsProxy.metrics, dnsProxy.cache.len(), itemsPurged)
