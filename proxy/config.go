@@ -32,17 +32,19 @@ type ReverseAddressToName struct {
 
 // Configuration is the DNS proxy configuration.
 type Configuration struct {
-	ListenAddress           HostAndPort            `json:"listenAddress"`
-	RemoteHTTPURL           string                 `json:"remoteHTTPURL"`
-	ForwardDomain           string                 `json:"forwardDomain"`
-	ForwardNamesToAddresses []ForwardNameToAddress `json:"forwardNamesToAddresses"`
-	ReverseDomain           string                 `json:"reverseDomain"`
-	ReverseAddressesToNames []ReverseAddressToName `json:"reverseAddressesToNames"`
-	MinTTLSeconds           uint32                 `json:"minTTLSeconds"`
-	MaxTTLSeconds           uint32                 `json:"maxTTLSeconds"`
-	MaxCacheSize            int                    `json:"maxCacheSize"`
-	TimerIntervalSeconds    int                    `json:"timerIntervalSeconds"`
-	MaxPurgesPerTimerPop    int                    `json:"maxPurgesPerTimerPop"`
+	ListenAddress             HostAndPort            `json:"listenAddress"`
+	RemoteHTTPURL             string                 `json:"remoteHTTPURL"`
+	ForwardDomain             string                 `json:"forwardDomain"`
+	ForwardNamesToAddresses   []ForwardNameToAddress `json:"forwardNamesToAddresses"`
+	ForwardResponseTTLSeconds uint32                 `json:"forwardResponseTTLSeconds"`
+	ReverseDomain             string                 `json:"reverseDomain"`
+	ReverseAddressesToNames   []ReverseAddressToName `json:"reverseAddressesToNames"`
+	ReverseResponseTTLSeconds uint32                 `json:"reverseResponseTTLSeconds"`
+	MinTTLSeconds             uint32                 `json:"minTTLSeconds"`
+	MaxTTLSeconds             uint32                 `json:"maxTTLSeconds"`
+	MaxCacheSize              int                    `json:"maxCacheSize"`
+	TimerIntervalSeconds      int                    `json:"timerIntervalSeconds"`
+	MaxPurgesPerTimerPop      int                    `json:"maxPurgesPerTimerPop"`
 }
 
 // ReadConfiguration reads the DNS proxy configuration from a json file.

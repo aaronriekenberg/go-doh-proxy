@@ -15,6 +15,7 @@
       "ipAddress": "192.168.1.100"
     }
   ],
+  "forwardResponseTTLSeconds": 60,
   "reverseDomain": "1.168.192.in-addr.arpa.",
   "reverseAddressesToNames": [
     {
@@ -26,6 +27,7 @@
       "name": "raspberrypi.domain."
     }
   ],
+  "reverseResponseTTLSeconds": 60,
   "minTTLSeconds": 10,
   "maxTTLSeconds": 30,
   "maxCacheSize": 20000,

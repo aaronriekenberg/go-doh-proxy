@@ -226,8 +226,13 @@ func (dnsProxy *dnsProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 		responseMsg.SetReply(r)
 		responseMsg.Authoritative = true
 		responseMsg.Answer = append(responseMsg.Answer, &dns.A{
-			Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
-			A:   address,
+			Hdr: dns.RR_Header{
+				Name:   question.Name,
+				Rrtype: dns.TypeA,
+				Class:  dns.ClassINET,
+				Ttl:    dnsProxy.configuration.ForwardResponseTTLSeconds,
+			},
+			A: address,
 		})
 		dnsProxy.writeResponse(w, responseMsg)
 	}
@@ -260,7 +265,12 @@ func (dnsProxy *dnsProxy) createReverseHandlerFunc() dns.HandlerFunc {
 		responseMsg.SetReply(r)
 		responseMsg.Authoritative = true
 		responseMsg.Answer = append(responseMsg.Answer, &dns.PTR{
-			Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypePTR, Class: dns.ClassINET, Ttl: 60},
+			Hdr: dns.RR_Header{
+				Name:   question.Name,
+				Rrtype: dns.TypePTR,
+				Class:  dns.ClassINET,
+				Ttl:    dnsProxy.configuration.ReverseResponseTTLSeconds,
+			},
 			Ptr: name,
 		})
 		dnsProxy.writeResponse(w, responseMsg)
