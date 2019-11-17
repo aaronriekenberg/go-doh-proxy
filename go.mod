@@ -6,8 +6,8 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/kr/pretty v0.1.0
 	github.com/miekg/dns v1.1.22
-	golang.org/x/crypto v0.0.0-20191112222119-e1110fd1c708 // indirect
-	golang.org/x/net v0.0.0-20191112182307-2180aed22343 // indirect
+	golang.org/x/crypto v0.0.0-20191117063200-497ca9f6d64f // indirect
+	golang.org/x/net v0.0.0-20191116160921-f9c825593386 // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
-	golang.org/x/sys v0.0.0-20191112214154-59a1497f0cea // indirect
+	golang.org/x/sys v0.0.0-20191115151921-52ab43148777 // indirect
 )
