@@ -33,7 +33,7 @@ type ReverseAddressToName struct {
 // Configuration is the DNS proxy configuration.
 type Configuration struct {
 	ListenAddress             HostAndPort            `json:"listenAddress"`
-	RemoteHTTPURL             string                 `json:"remoteHTTPURL"`
+	RemoteHTTPURLs            []string               `json:"remoteHTTPURLs"`
 	ForwardDomain             string                 `json:"forwardDomain"`
 	ForwardNamesToAddresses   []ForwardNameToAddress `json:"forwardNamesToAddresses"`
 	ForwardResponseTTLSeconds uint32                 `json:"forwardResponseTTLSeconds"`

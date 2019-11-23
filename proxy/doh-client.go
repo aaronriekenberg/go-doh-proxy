@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -15,16 +16,27 @@ import (
 )
 
 type dohClient struct {
-	remoteHTTPURL string
+	remoteHTTPURLs []string
 }
 
-func newDOHClient(remoteHTTPURL string) dohClient {
+func newDOHClient(remoteHTTPURLs []string) dohClient {
 	return dohClient{
-		remoteHTTPURL: remoteHTTPURL,
+		remoteHTTPURLs: remoteHTTPURLs,
 	}
 }
 
+func (dohClient *dohClient) pickRandomRemoteHTTPURL() string {
+	length := len(dohClient.remoteHTTPURLs)
+
+	if length == 1 {
+		return dohClient.remoteHTTPURLs[0]
+	}
+
+	return dohClient.remoteHTTPURLs[rand.Intn(length)]
+}
+
 func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (resp *dns.Msg, err error) {
+	const requestMethod = "POST"
 	const dnsMessageMIMEType = "application/dns-message"
 	const maxBodyBytes = 65535 // RFC 8484 section 6
 	const requestTimeoutSeconds = 5
@@ -38,7 +50,9 @@ func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 		return
 	}
 
-	httpRequest, err := http.NewRequestWithContext(ctx, "POST", dohClient.remoteHTTPURL, bytes.NewReader(packedRequest))
+	remoteURL := dohClient.pickRandomRemoteHTTPURL()
+
+	httpRequest, err := http.NewRequestWithContext(ctx, requestMethod, remoteURL, bytes.NewReader(packedRequest))
 	if err != nil {
 		log.Printf("NewRequest error %v", err)
 		return

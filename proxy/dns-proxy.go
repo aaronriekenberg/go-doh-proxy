@@ -41,7 +41,7 @@ func NewDNSProxy(configuration *Configuration) DNSProxy {
 		configuration:           configuration,
 		forwardNamesToAddresses: forwardNamesToAddresses,
 		reverseAddressesToNames: reverseAddressesToNames,
-		dohClient:               newDOHClient(configuration.RemoteHTTPURL),
+		dohClient:               newDOHClient(configuration.RemoteHTTPURLs),
 		cache:                   newCache(configuration.MaxCacheSize),
 	}
 }
