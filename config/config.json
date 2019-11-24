@@ -4,7 +4,6 @@
     "port": "10053"
   },
   "remoteHTTPURLs": [
-    "https://dns.google/dns-query",
     "https://cloudflare-dns.com/dns-query"
   ],
   "forwardDomain": "domain.",
