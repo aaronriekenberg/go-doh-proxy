@@ -10,3 +10,9 @@ Tech Stack:
 Configurable authoritative forward and reverse lookups for local domain.
 
 Allows clamping ttl in response messages between configurable min and max.  Responses are cached based by question until the response ttl expires.
+
+## Configuration
+See config directory for examples.
+
+## Systemd
+See systemd directory for example user unit file.
