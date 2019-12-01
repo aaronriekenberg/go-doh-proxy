@@ -8,7 +8,7 @@ import (
 type metrics struct {
 	nonAtomicCacheHits           uint64
 	nonAtomicCacheMisses         uint64
-	nonAtomicClientErrors        uint64
+	nonAtomicDOHClientErrors     uint64
 	nonAtomicWriteResponseErrors uint64
 }
 
@@ -28,12 +28,12 @@ func (metrics *metrics) cacheMisses() uint64 {
 	return atomic.LoadUint64(&metrics.nonAtomicCacheMisses)
 }
 
-func (metrics *metrics) incrementClientErrors() {
-	atomic.AddUint64(&metrics.nonAtomicClientErrors, 1)
+func (metrics *metrics) incrementDOHClientErrors() {
+	atomic.AddUint64(&metrics.nonAtomicDOHClientErrors, 1)
 }
 
-func (metrics *metrics) clientErrors() uint64 {
-	return atomic.LoadUint64(&metrics.nonAtomicClientErrors)
+func (metrics *metrics) dohClientErrors() uint64 {
+	return atomic.LoadUint64(&metrics.nonAtomicDOHClientErrors)
 }
 
 func (metrics *metrics) incrementWriteResponseErrors() {
@@ -45,6 +45,6 @@ func (metrics *metrics) writeResponseErrors() uint64 {
 }
 
 func (metrics *metrics) String() string {
-	return fmt.Sprintf("cacheHits = %v cacheMisses = %v clientErrors = %v writeResponseErrors = %v",
-		metrics.cacheHits(), metrics.cacheMisses(), metrics.clientErrors(), metrics.writeResponseErrors())
+	return fmt.Sprintf("cacheHits = %v cacheMisses = %v dohClientErrors = %v writeResponseErrors = %v",
+		metrics.cacheHits(), metrics.cacheMisses(), metrics.dohClientErrors(), metrics.writeResponseErrors())
 }

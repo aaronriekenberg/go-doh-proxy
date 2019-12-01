@@ -186,7 +186,7 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		r.Id = 0
 		responseMsg, err := dnsProxy.dohClient.makeHTTPRequest(ctx, r)
 		if err != nil {
-			dnsProxy.metrics.incrementClientErrors()
+			dnsProxy.metrics.incrementDOHClientErrors()
 			log.Printf("makeHttpRequest error %v", err)
 			r.Id = requestID
 			dns.HandleFailed(w, r)
@@ -311,10 +311,10 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 	for {
 		select {
 		case <-ticker.C:
-			itemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.MaxCachePurgesPerTimerPop)
+			cacheItemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.MaxCachePurgesPerTimerPop)
 
-			log.Printf("timerPop metrics: %v cache.len = %v itemsPurged = %v",
-				&dnsProxy.metrics, dnsProxy.cache.len(), itemsPurged)
+			log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v",
+				&dnsProxy.metrics, dnsProxy.cache.len(), cacheItemsPurged)
 		}
 	}
 }
