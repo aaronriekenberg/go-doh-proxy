@@ -32,9 +32,8 @@ type ReverseAddressToName struct {
 
 // ProxyConfiguration is the proxy configuration.
 type ProxyConfiguration struct {
-	MinTTLSeconds     uint32 `json:"minTTLSeconds"`
-	MaxTTLSeconds     uint32 `json:"maxTTLSeconds"`
-	RemoveEDNSPadding bool   `json:"removeEDNSPadding"`
+	MinTTLSeconds uint32 `json:"minTTLSeconds"`
+	MaxTTLSeconds uint32 `json:"maxTTLSeconds"`
 }
 
 // Configuration is the DNS proxy configuration.

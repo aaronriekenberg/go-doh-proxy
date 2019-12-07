@@ -46,26 +46,6 @@ func NewDNSProxy(configuration *Configuration) DNSProxy {
 	}
 }
 
-func (dnsProxy *dnsProxy) removeEDNSPadding(m *dns.Msg) {
-	if !dnsProxy.configuration.ProxyConfiguration.RemoveEDNSPadding {
-		return
-	}
-
-	for _, extra := range m.Extra {
-		if extra.Header().Rrtype == dns.TypeOPT {
-			if opt, ok := extra.(*dns.OPT); ok {
-				var optionWithoutPadding []dns.EDNS0
-				for _, option := range opt.Option {
-					if option.Option() != dns.EDNS0PADDING {
-						optionWithoutPadding = append(optionWithoutPadding, option)
-					}
-				}
-				opt.Option = optionWithoutPadding
-			}
-		}
-	}
-}
-
 func (dnsProxy *dnsProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 	proxyMinTTLSeconds := dnsProxy.configuration.ProxyConfiguration.MinTTLSeconds
 	proxyMaxTTLSeconds := dnsProxy.configuration.ProxyConfiguration.MaxTTLSeconds
@@ -216,7 +196,6 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 			return
 		}
 
-		dnsProxy.removeEDNSPadding(responseMsg)
 		dnsProxy.clampTTLAndCacheResponse(cacheKey, responseMsg)
 		responseMsg.Id = requestID
 		dnsProxy.writeResponse(w, responseMsg)
