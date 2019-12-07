@@ -3,9 +3,6 @@
     "host": "192.168.1.1",
     "port": "10053"
   },
-  "remoteHTTPURLs": [
-    "https://cloudflare-dns.com/dns-query"
-  ],
   "forwardDomain": "domain.",
   "forwardNamesToAddresses": [
     {
@@ -39,10 +36,15 @@
   ],
   "reverseResponseTTLSeconds": 60,
   "proxyConfiguration": {
+    "remoteHTTPURLs": [
+      "https://cloudflare-dns.com/dns-query"
+    ],
     "minTTLSeconds": 300,
     "maxTTLSeconds": 3600
   },
-  "maxCacheSize": 20000,
-  "timerIntervalSeconds": 60,
-  "maxCachePurgesPerTimerPop": 100
+  "cacheConfiguration": {
+    "maxSize": 20000,
+    "maxPurgesPerTimerPop": 100
+  },
+  "timerIntervalSeconds": 60
 }

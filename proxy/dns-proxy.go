@@ -41,8 +41,8 @@ func NewDNSProxy(configuration *Configuration) DNSProxy {
 		configuration:           configuration,
 		forwardNamesToAddresses: forwardNamesToAddresses,
 		reverseAddressesToNames: reverseAddressesToNames,
-		dohClient:               newDOHClient(configuration.RemoteHTTPURLs),
-		cache:                   newCache(configuration.MaxCacheSize),
+		dohClient:               newDOHClient(configuration.ProxyConfiguration.RemoteHTTPURLs),
+		cache:                   newCache(configuration.CacheConfiguration.MaxSize),
 	}
 }
 
@@ -314,7 +314,7 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 	for {
 		select {
 		case <-ticker.C:
-			cacheItemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.MaxCachePurgesPerTimerPop)
+			cacheItemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.CacheConfiguration.MaxPurgesPerTimerPop)
 
 			log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v",
 				&dnsProxy.metrics, dnsProxy.cache.len(), cacheItemsPurged)

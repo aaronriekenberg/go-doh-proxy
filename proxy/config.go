@@ -32,14 +32,20 @@ type ReverseAddressToName struct {
 
 // ProxyConfiguration is the proxy configuration.
 type ProxyConfiguration struct {
-	MinTTLSeconds uint32 `json:"minTTLSeconds"`
-	MaxTTLSeconds uint32 `json:"maxTTLSeconds"`
+	RemoteHTTPURLs []string `json:"remoteHTTPURLs"`
+	MinTTLSeconds  uint32   `json:"minTTLSeconds"`
+	MaxTTLSeconds  uint32   `json:"maxTTLSeconds"`
+}
+
+// CacheConfiguration is the cache configuration.
+type CacheConfiguration struct {
+	MaxSize              int `json:"maxSize"`
+	MaxPurgesPerTimerPop int `json:"maxPurgesPerTimerPop"`
 }
 
 // Configuration is the DNS proxy configuration.
 type Configuration struct {
 	ListenAddress             HostAndPort            `json:"listenAddress"`
-	RemoteHTTPURLs            []string               `json:"remoteHTTPURLs"`
 	ForwardDomain             string                 `json:"forwardDomain"`
 	ForwardNamesToAddresses   []ForwardNameToAddress `json:"forwardNamesToAddresses"`
 	ForwardResponseTTLSeconds uint32                 `json:"forwardResponseTTLSeconds"`
@@ -47,9 +53,8 @@ type Configuration struct {
 	ReverseAddressesToNames   []ReverseAddressToName `json:"reverseAddressesToNames"`
 	ReverseResponseTTLSeconds uint32                 `json:"reverseResponseTTLSeconds"`
 	ProxyConfiguration        ProxyConfiguration     `json:"proxyConfiguration"`
-	MaxCacheSize              int                    `json:"maxCacheSize"`
+	CacheConfiguration        CacheConfiguration     `json:"cacheConfiguration"`
 	TimerIntervalSeconds      int                    `json:"timerIntervalSeconds"`
-	MaxCachePurgesPerTimerPop int                    `json:"maxCachePurgesPerTimerPop"`
 }
 
 // ReadConfiguration reads the DNS proxy configuration from a json file.
