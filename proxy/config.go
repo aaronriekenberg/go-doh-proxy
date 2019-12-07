@@ -42,6 +42,7 @@ type Configuration struct {
 	ReverseResponseTTLSeconds uint32                 `json:"reverseResponseTTLSeconds"`
 	ProxyMinTTLSeconds        uint32                 `json:"proxyMinTTLSeconds"`
 	ProxyMaxTTLSeconds        uint32                 `json:"proxyMaxTTLSeconds"`
+	ProxyRemoveEDNSPadding    bool                   `json:"proxyRemoveEDNSPadding"`
 	MaxCacheSize              int                    `json:"maxCacheSize"`
 	TimerIntervalSeconds      int                    `json:"timerIntervalSeconds"`
 	MaxCachePurgesPerTimerPop int                    `json:"maxCachePurgesPerTimerPop"`

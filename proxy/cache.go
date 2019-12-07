@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/miekg/dns"
 )
 
@@ -20,8 +20,7 @@ func getCacheKey(m *dns.Msg) string {
 	doSet := false
 	for _, extra := range m.Extra {
 		if extra.Header().Rrtype == dns.TypeOPT {
-			opt, ok := extra.(*dns.OPT)
-			if ok && opt.Do() {
+			if opt, ok := extra.(*dns.OPT); ok && opt.Do() {
 				doSet = true
 				break
 			}
