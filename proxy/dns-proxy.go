@@ -53,9 +53,7 @@ func (dnsProxy *dnsProxy) removeEDNSPadding(m *dns.Msg) {
 				if opt, ok := extra.(*dns.OPT); ok {
 					var optionWithoutPadding []dns.EDNS0
 					for _, option := range opt.Option {
-						switch option.(type) {
-						case *dns.EDNS0_PADDING:
-						default:
+						if option.Option() != dns.EDNS0PADDING {
 							optionWithoutPadding = append(optionWithoutPadding, option)
 						}
 					}
