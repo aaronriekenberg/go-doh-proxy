@@ -30,6 +30,13 @@ type ReverseAddressToName struct {
 	Name           string `json:"name"`
 }
 
+// ProxyConfiguration is the proxy configuration.
+type ProxyConfiguration struct {
+	MinTTLSeconds     uint32 `json:"minTTLSeconds"`
+	MaxTTLSeconds     uint32 `json:"maxTTLSeconds"`
+	RemoveEDNSPadding bool   `json:"removeEDNSPadding"`
+}
+
 // Configuration is the DNS proxy configuration.
 type Configuration struct {
 	ListenAddress             HostAndPort            `json:"listenAddress"`
@@ -40,9 +47,7 @@ type Configuration struct {
 	ReverseDomain             string                 `json:"reverseDomain"`
 	ReverseAddressesToNames   []ReverseAddressToName `json:"reverseAddressesToNames"`
 	ReverseResponseTTLSeconds uint32                 `json:"reverseResponseTTLSeconds"`
-	ProxyMinTTLSeconds        uint32                 `json:"proxyMinTTLSeconds"`
-	ProxyMaxTTLSeconds        uint32                 `json:"proxyMaxTTLSeconds"`
-	ProxyRemoveEDNSPadding    bool                   `json:"proxyRemoveEDNSPadding"`
+	ProxyConfiguration        ProxyConfiguration     `json:"proxyConfiguration"`
 	MaxCacheSize              int                    `json:"maxCacheSize"`
 	TimerIntervalSeconds      int                    `json:"timerIntervalSeconds"`
 	MaxCachePurgesPerTimerPop int                    `json:"maxCachePurgesPerTimerPop"`

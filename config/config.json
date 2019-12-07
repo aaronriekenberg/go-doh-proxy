@@ -30,9 +30,11 @@
     }
   ],
   "reverseResponseTTLSeconds": 60,
-  "proxyMinTTLSeconds": 10,
-  "proxyMaxTTLSeconds": 30,
-  "proxyRemoveEDNSPadding": true,
+  "proxyConfiguration": {
+    "minTTLSeconds": 10,
+    "maxTTLSeconds": 30,
+    "removeEDNSPadding": true
+  },
   "maxCacheSize": 20000,
   "timerIntervalSeconds": 10,
   "maxCachePurgesPerTimerPop": 100

@@ -47,37 +47,42 @@ func NewDNSProxy(configuration *Configuration) DNSProxy {
 }
 
 func (dnsProxy *dnsProxy) removeEDNSPadding(m *dns.Msg) {
-	if dnsProxy.configuration.ProxyRemoveEDNSPadding {
-		for _, extra := range m.Extra {
-			if extra.Header().Rrtype == dns.TypeOPT {
-				if opt, ok := extra.(*dns.OPT); ok {
-					var optionWithoutPadding []dns.EDNS0
-					for _, option := range opt.Option {
-						if option.Option() != dns.EDNS0PADDING {
-							optionWithoutPadding = append(optionWithoutPadding, option)
-						}
+	if !dnsProxy.configuration.ProxyConfiguration.RemoveEDNSPadding {
+		return
+	}
+
+	for _, extra := range m.Extra {
+		if extra.Header().Rrtype == dns.TypeOPT {
+			if opt, ok := extra.(*dns.OPT); ok {
+				var optionWithoutPadding []dns.EDNS0
+				for _, option := range opt.Option {
+					if option.Option() != dns.EDNS0PADDING {
+						optionWithoutPadding = append(optionWithoutPadding, option)
 					}
-					opt.Option = optionWithoutPadding
 				}
+				opt.Option = optionWithoutPadding
 			}
 		}
 	}
 }
 
 func (dnsProxy *dnsProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
+	proxyMinTTLSeconds := dnsProxy.configuration.ProxyConfiguration.MinTTLSeconds
+	proxyMaxTTLSeconds := dnsProxy.configuration.ProxyConfiguration.MaxTTLSeconds
+
 	foundRRHeaderTTL := false
-	minTTLSeconds := dnsProxy.configuration.ProxyMinTTLSeconds
+	rrHeaderMinTTLSeconds := proxyMinTTLSeconds
 
 	processRRHeader := func(rrHeader *dns.RR_Header) {
 		ttl := rrHeader.Ttl
-		if ttl < dnsProxy.configuration.ProxyMinTTLSeconds {
-			ttl = dnsProxy.configuration.ProxyMinTTLSeconds
+		if ttl < proxyMinTTLSeconds {
+			ttl = proxyMinTTLSeconds
 		}
-		if ttl > dnsProxy.configuration.ProxyMaxTTLSeconds {
-			ttl = dnsProxy.configuration.ProxyMaxTTLSeconds
+		if ttl > proxyMaxTTLSeconds {
+			ttl = proxyMaxTTLSeconds
 		}
-		if (!foundRRHeaderTTL) || (ttl < minTTLSeconds) {
-			minTTLSeconds = ttl
+		if (!foundRRHeaderTTL) || (ttl < rrHeaderMinTTLSeconds) {
+			rrHeaderMinTTLSeconds = ttl
 			foundRRHeaderTTL = true
 		}
 		rrHeader.Ttl = ttl
@@ -96,7 +101,7 @@ func (dnsProxy *dnsProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
 		}
 	}
 
-	return minTTLSeconds
+	return rrHeaderMinTTLSeconds
 }
 
 func (dnsProxy *dnsProxy) getCachedMessageCopyForHit(cacheKey string) *dns.Msg {
