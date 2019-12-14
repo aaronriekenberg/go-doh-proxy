@@ -302,9 +302,8 @@ func (dnsProxy *dnsProxy) runServer(listenAddrAndPort, net string, serveMux *dns
 
 	log.Printf("starting %v server on %v", net, listenAddrAndPort)
 
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("ListenAndServe error for net %s: %v", net, err)
-	}
+	err := srv.ListenAndServe()
+	log.Fatalf("ListenAndServe error for net %s: %v", net, err)
 }
 
 func (dnsProxy *dnsProxy) runPeriodicTimer() {
