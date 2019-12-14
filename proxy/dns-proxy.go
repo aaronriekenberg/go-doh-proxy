@@ -16,33 +16,18 @@ type DNSProxy interface {
 }
 
 type dnsProxy struct {
-	configuration           *Configuration
-	forwardNamesToAddresses map[string]net.IP
-	reverseAddressesToNames map[string]string
-	dohClient               dohClient
-	cache                   cache
-	metrics                 metrics
+	configuration *Configuration
+	dohClient     dohClient
+	cache         cache
+	metrics       metrics
 }
 
 // NewDNSProxy creates a DNS proxy.
 func NewDNSProxy(configuration *Configuration) DNSProxy {
-
-	forwardNamesToAddresses := make(map[string]net.IP)
-	for _, forwardNameToAddress := range configuration.ForwardNamesToAddresses {
-		forwardNamesToAddresses[strings.ToLower(forwardNameToAddress.Name)] = net.ParseIP(forwardNameToAddress.IPAddress)
-	}
-
-	reverseAddressesToNames := make(map[string]string)
-	for _, reverseAddressToName := range configuration.ReverseAddressesToNames {
-		reverseAddressesToNames[strings.ToLower(reverseAddressToName.ReverseAddress)] = reverseAddressToName.Name
-	}
-
 	return &dnsProxy{
-		configuration:           configuration,
-		forwardNamesToAddresses: forwardNamesToAddresses,
-		reverseAddressesToNames: reverseAddressesToNames,
-		dohClient:               newDOHClient(configuration.ProxyConfiguration.RemoteHTTPURLs),
-		cache:                   newCache(configuration.CacheConfiguration.MaxSize),
+		configuration: configuration,
+		dohClient:     newDOHClient(configuration.ProxyConfiguration.RemoteHTTPURLs),
+		cache:         newCache(configuration.CacheConfiguration.MaxSize),
 	}
 }
 
@@ -202,7 +187,12 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 	}
 }
 
-func (dnsProxy *dnsProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
+func (dnsProxy *dnsProxy) createForwardDomainHandlerFunc(forwardDomainConfiguration ForwardDomainConfiguration) dns.HandlerFunc {
+	forwardNamesToAddresses := make(map[string]net.IP)
+	for _, forwardNameToAddress := range forwardDomainConfiguration.NamesToAddresses {
+		forwardNamesToAddresses[strings.ToLower(forwardNameToAddress.Name)] = net.ParseIP(forwardNameToAddress.IPAddress)
+	}
+
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) == 0 {
 			dns.HandleFailed(w, r)
@@ -218,7 +208,7 @@ func (dnsProxy *dnsProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 			return
 		}
 
-		address, ok := dnsProxy.forwardNamesToAddresses[strings.ToLower(question.Name)]
+		address, ok := forwardNamesToAddresses[strings.ToLower(question.Name)]
 		if !ok {
 			responseMsg.SetRcode(r, dns.RcodeNameError)
 			responseMsg.Authoritative = true
@@ -233,7 +223,7 @@ func (dnsProxy *dnsProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 				Name:   question.Name,
 				Rrtype: dns.TypeA,
 				Class:  dns.ClassINET,
-				Ttl:    dnsProxy.configuration.ForwardResponseTTLSeconds,
+				Ttl:    forwardDomainConfiguration.ResponseTTLSeconds,
 			},
 			A: address,
 		})
@@ -241,7 +231,12 @@ func (dnsProxy *dnsProxy) createForwardDomainHandlerFunc() dns.HandlerFunc {
 	}
 }
 
-func (dnsProxy *dnsProxy) createReverseHandlerFunc() dns.HandlerFunc {
+func (dnsProxy *dnsProxy) createReverseHandlerFunc(reverseDomainConfiguration ReverseDomainConfiguration) dns.HandlerFunc {
+	reverseAddressesToNames := make(map[string]string)
+	for _, reverseAddressToName := range reverseDomainConfiguration.AddressesToNames {
+		reverseAddressesToNames[strings.ToLower(reverseAddressToName.ReverseAddress)] = reverseAddressToName.Name
+	}
+
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		if len(r.Question) == 0 {
 			dns.HandleFailed(w, r)
@@ -257,7 +252,7 @@ func (dnsProxy *dnsProxy) createReverseHandlerFunc() dns.HandlerFunc {
 			return
 		}
 
-		name, ok := dnsProxy.reverseAddressesToNames[strings.ToLower(question.Name)]
+		name, ok := reverseAddressesToNames[strings.ToLower(question.Name)]
 		if !ok {
 			responseMsg.SetRcode(r, dns.RcodeNameError)
 			responseMsg.Authoritative = true
@@ -272,7 +267,7 @@ func (dnsProxy *dnsProxy) createReverseHandlerFunc() dns.HandlerFunc {
 				Name:   question.Name,
 				Rrtype: dns.TypePTR,
 				Class:  dns.ClassINET,
-				Ttl:    dnsProxy.configuration.ReverseResponseTTLSeconds,
+				Ttl:    reverseDomainConfiguration.ResponseTTLSeconds,
 			},
 			Ptr: name,
 		})
@@ -287,9 +282,13 @@ func (dnsProxy *dnsProxy) createServeMux() *dns.ServeMux {
 
 	dnsServeMux.HandleFunc(".", dnsProxy.createProxyHandlerFunc())
 
-	dnsServeMux.HandleFunc(dnsProxy.configuration.ForwardDomain, dnsProxy.createForwardDomainHandlerFunc())
+	for _, forwardDomainConfiguration := range dnsProxy.configuration.ForwardDomainConfigurations {
+		dnsServeMux.HandleFunc(forwardDomainConfiguration.Domain, dnsProxy.createForwardDomainHandlerFunc(forwardDomainConfiguration))
+	}
 
-	dnsServeMux.HandleFunc(dnsProxy.configuration.ReverseDomain, dnsProxy.createReverseHandlerFunc())
+	for _, reverseDomainConfiguration := range dnsProxy.configuration.ReverseDomainConfigurations {
+		dnsServeMux.HandleFunc(reverseDomainConfiguration.Domain, dnsProxy.createReverseHandlerFunc(reverseDomainConfiguration))
+	}
 
 	return dnsServeMux
 }

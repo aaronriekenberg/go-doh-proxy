@@ -3,30 +3,46 @@
     "host": "",
     "port": "10053"
   },
-  "forwardDomain": "domain.",
-  "forwardNamesToAddresses": [
+  "forwardDomainConfigurations": [
     {
-      "name": "apu2.domain.",
-      "ipAddress": "192.168.1.1"
-    },
-    {
-      "name": "raspberrypi.domain.",
-      "ipAddress": "192.168.1.100"
+      "domain": "domain.",
+      "namesToAddresses": [
+        {
+          "name": "apu2.domain.",
+          "ipAddress": "192.168.1.1"
+        },
+        {
+          "name": "raspberrypi.domain.",
+          "ipAddress": "192.168.1.100"
+        },
+        {
+          "name": "oldpc.domain.",
+          "ipAddress": "192.168.1.101"
+        }
+      ],
+      "responseTTLSeconds": 60
     }
   ],
-  "forwardResponseTTLSeconds": 60,
-  "reverseDomain": "1.168.192.in-addr.arpa.",
-  "reverseAddressesToNames": [
+  "reverseDomainConfigurations": [
     {
-      "reverseAddress": "1.1.168.192.in-addr.arpa.",
-      "name": "apu2.domain."
-    },
-    {
-      "reverseAddress": "100.1.168.192.in-addr.arpa.",
-      "name": "raspberrypi.domain."
+      "domain": "1.168.192.in-addr.arpa.",
+      "addressesToNames": [
+        {
+          "reverseAddress": "1.1.168.192.in-addr.arpa.",
+          "name": "apu2.domain."
+        },
+        {
+          "reverseAddress": "100.1.168.192.in-addr.arpa.",
+          "name": "raspberrypi.domain."
+        },
+        {
+          "reverseAddress": "101.1.168.192.in-addr.arpa.",
+          "name": "oldpc.domain."
+        }
+      ],
+      "responseTTLSeconds": 60
     }
   ],
-  "reverseResponseTTLSeconds": 60,
   "proxyConfiguration": {
     "remoteHTTPURLs": [
       "https://cloudflare-dns.com/dns-query"

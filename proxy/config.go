@@ -24,10 +24,24 @@ type ForwardNameToAddress struct {
 	IPAddress string `json:"ipAddress"`
 }
 
+// ForwardDomainConfiguration is the configuration for a forward domain.
+type ForwardDomainConfiguration struct {
+	Domain             string                 `json:"domain"`
+	NamesToAddresses   []ForwardNameToAddress `json:"namesToAddresses"`
+	ResponseTTLSeconds uint32                 `json:"responseTTLSeconds"`
+}
+
 // ReverseAddressToName is a reverse address to name mapping.
 type ReverseAddressToName struct {
 	ReverseAddress string `json:"reverseAddress"`
 	Name           string `json:"name"`
+}
+
+// ReverseDomainConfiguration is the configuration for a reverse domain.
+type ReverseDomainConfiguration struct {
+	Domain             string                 `json:"domain"`
+	AddressesToNames   []ReverseAddressToName `json:"addressesToNames"`
+	ResponseTTLSeconds uint32                 `json:"responseTTLSeconds"`
 }
 
 // ProxyConfiguration is the proxy configuration.
@@ -45,16 +59,12 @@ type CacheConfiguration struct {
 
 // Configuration is the DNS proxy configuration.
 type Configuration struct {
-	ListenAddress             HostAndPort            `json:"listenAddress"`
-	ForwardDomain             string                 `json:"forwardDomain"`
-	ForwardNamesToAddresses   []ForwardNameToAddress `json:"forwardNamesToAddresses"`
-	ForwardResponseTTLSeconds uint32                 `json:"forwardResponseTTLSeconds"`
-	ReverseDomain             string                 `json:"reverseDomain"`
-	ReverseAddressesToNames   []ReverseAddressToName `json:"reverseAddressesToNames"`
-	ReverseResponseTTLSeconds uint32                 `json:"reverseResponseTTLSeconds"`
-	ProxyConfiguration        ProxyConfiguration     `json:"proxyConfiguration"`
-	CacheConfiguration        CacheConfiguration     `json:"cacheConfiguration"`
-	TimerIntervalSeconds      int                    `json:"timerIntervalSeconds"`
+	ListenAddress               HostAndPort                  `json:"listenAddress"`
+	ForwardDomainConfigurations []ForwardDomainConfiguration `json:"forwardDomainConfigurations"`
+	ReverseDomainConfigurations []ReverseDomainConfiguration `json:"reverseDomainConfigurations"`
+	ProxyConfiguration          ProxyConfiguration           `json:"proxyConfiguration"`
+	CacheConfiguration          CacheConfiguration           `json:"cacheConfiguration"`
+	TimerIntervalSeconds        int                          `json:"timerIntervalSeconds"`
 }
 
 // ReadConfiguration reads the DNS proxy configuration from a json file.
