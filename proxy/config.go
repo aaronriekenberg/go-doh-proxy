@@ -46,9 +46,10 @@ type ReverseDomainConfiguration struct {
 
 // ProxyConfiguration is the proxy configuration.
 type ProxyConfiguration struct {
-	RemoteHTTPURLs []string `json:"remoteHTTPURLs"`
-	MinTTLSeconds  uint32   `json:"minTTLSeconds"`
-	MaxTTLSeconds  uint32   `json:"maxTTLSeconds"`
+	RemoteHTTPURLs      []string `json:"remoteHTTPURLs"`
+	PadOutgoingRequests bool     `json:"padOutgoingRequests"`
+	MinTTLSeconds       uint32   `json:"minTTLSeconds"`
+	MaxTTLSeconds       uint32   `json:"maxTTLSeconds"`
 }
 
 // CacheConfiguration is the cache configuration.

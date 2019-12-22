@@ -16,12 +16,54 @@ import (
 )
 
 type dohClient struct {
-	remoteHTTPURLs []string
+	remoteHTTPURLs      []string
+	padOutgoingRequests bool
 }
 
-func newDOHClient(remoteHTTPURLs []string) dohClient {
+func newDOHClient(remoteHTTPURLs []string, padOutgoingRequests bool) dohClient {
 	return dohClient{
-		remoteHTTPURLs: remoteHTTPURLs,
+		remoteHTTPURLs:      remoteHTTPURLs,
+		padOutgoingRequests: padOutgoingRequests,
+	}
+}
+
+func (dohClient *dohClient) padRequestMsg(r *dns.Msg) {
+	if !dohClient.padOutgoingRequests {
+		return
+	}
+
+	const padBlockLength = 128 // RFC8467 section 4.1
+
+	// remove existing padding and find OPT record
+	var optRecord *dns.OPT
+	for _, extra := range r.Extra {
+		if extra.Header().Rrtype == dns.TypeOPT {
+			if opt, ok := extra.(*dns.OPT); ok {
+				optRecord = opt
+				var optionSliceWithoutPadding []dns.EDNS0
+				for _, option := range opt.Option {
+					if option.Option() != dns.EDNS0PADDING {
+						optionSliceWithoutPadding = append(optionSliceWithoutPadding, option)
+					}
+				}
+				opt.Option = optionSliceWithoutPadding
+			}
+		}
+	}
+	if optRecord == nil {
+		optRecord = &dns.OPT{}
+		r.Extra = append(r.Extra, optRecord)
+	}
+
+	// Adding EDNS0 padding option will include 4 byte length header.
+	msgLength := r.Len() + 4
+
+	neededPadBytes := padBlockLength - (msgLength % padBlockLength)
+
+	if neededPadBytes > 0 {
+		optRecord.Option = append(optRecord.Option, &dns.EDNS0_PADDING{
+			Padding: make([]byte, neededPadBytes),
+		})
 	}
 }
 
@@ -43,6 +85,8 @@ func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 
 	ctx, cancel := context.WithTimeout(ctx, requestTimeoutSeconds*time.Second)
 	defer cancel()
+
+	dohClient.padRequestMsg(r)
 
 	packedRequest, err := r.Pack()
 	if err != nil {

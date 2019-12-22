@@ -47,6 +47,7 @@
     "remoteHTTPURLs": [
       "https://cloudflare-dns.com/dns-query"
     ],
+    "padOutgoingRequests": true,
     "minTTLSeconds": 300,
     "maxTTLSeconds": 3600
   },
