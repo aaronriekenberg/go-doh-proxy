@@ -69,11 +69,9 @@ func (dohClient *dohClient) padRequestMsg(r *dns.Msg) {
 
 	neededPadBytes := padBlockLength - (msgLength % padBlockLength)
 
-	if neededPadBytes > 0 {
-		optRecord.Option = append(optRecord.Option, &dns.EDNS0_PADDING{
-			Padding: make([]byte, neededPadBytes),
-		})
-	}
+	optRecord.Option = append(optRecord.Option, &dns.EDNS0_PADDING{
+		Padding: make([]byte, neededPadBytes),
+	})
 }
 
 func (dohClient *dohClient) pickRandomRemoteHTTPURL() string {
