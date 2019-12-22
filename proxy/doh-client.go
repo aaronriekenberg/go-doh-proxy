@@ -33,6 +33,8 @@ func (dohClient *dohClient) padRequestMsg(r *dns.Msg) {
 	}
 
 	const padBlockLength = 128 // RFC8467 section 4.1
+	const defaultOPTName = "."
+	const defaultUDPSize = 4096
 
 	// remove existing padding and find OPT record
 	var optRecord *dns.OPT
@@ -51,7 +53,14 @@ func (dohClient *dohClient) padRequestMsg(r *dns.Msg) {
 		}
 	}
 	if optRecord == nil {
-		optRecord = &dns.OPT{}
+		optRecord = &dns.OPT{
+			Hdr: dns.RR_Header{
+				Name:   defaultOPTName,
+				Rrtype: dns.TypeOPT,
+				Class:  dns.ClassINET,
+			},
+		}
+		optRecord.SetUDPSize(defaultUDPSize)
 		r.Extra = append(r.Extra, optRecord)
 	}
 
