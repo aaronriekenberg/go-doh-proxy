@@ -48,8 +48,8 @@
       "https://cloudflare-dns.com/dns-query"
     ],
     "padOutgoingRequests": true,
-    "minTTLSeconds": 10,
-    "maxTTLSeconds": 30
+    "clampMinTTLSeconds": 10,
+    "clampMaxTTLSeconds": 30
   },
   "cacheConfiguration": {
     "maxSize": 20000,
