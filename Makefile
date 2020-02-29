@@ -1,5 +1,5 @@
 GOCMD=go
-GOBUILD=$(GOCMD) build
+GOBUILD=$(GOCMD) build -x
 
 BINARY_NAME=go-doh-proxy
 BINARY_NAME_LINUX_AMD64=go-doh-proxy-linux-amd64
