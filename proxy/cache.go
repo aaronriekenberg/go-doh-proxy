@@ -17,22 +17,6 @@ func getCacheKey(m *dns.Msg) string {
 
 	var builder strings.Builder
 
-	doSet := false
-	for _, extra := range m.Extra {
-		if extra.Header().Rrtype == dns.TypeOPT {
-			if opt, ok := extra.(*dns.OPT); ok && opt.Do() {
-				doSet = true
-				break
-			}
-		}
-	}
-
-	if !doSet {
-		builder.WriteByte('0')
-	} else {
-		builder.WriteByte('1')
-	}
-
 	for _, question := range m.Question {
 		fmt.Fprintf(&builder, "|%s:%d:%d", strings.ToLower(question.Name), question.Qtype, question.Qclass)
 	}
