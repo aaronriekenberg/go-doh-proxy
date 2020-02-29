@@ -14,10 +14,6 @@
         {
           "name": "raspberrypi.domain.",
           "ipAddress": "192.168.1.100"
-        },
-        {
-          "name": "oldpc.domain.",
-          "ipAddress": "192.168.1.101"
         }
       ],
       "responseTTLSeconds": 60
@@ -34,10 +30,6 @@
         {
           "reverseAddress": "100.1.168.192.in-addr.arpa.",
           "name": "raspberrypi.domain."
-        },
-        {
-          "reverseAddress": "101.1.168.192.in-addr.arpa.",
-          "name": "oldpc.domain."
         }
       ],
       "responseTTLSeconds": 60
