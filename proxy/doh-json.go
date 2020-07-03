@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net"
+	"strings"
 
 	"github.com/miekg/dns"
 )
@@ -81,6 +82,18 @@ func decodeJSONResponse(request *dns.Msg, jsonResponse []byte) (resp *dns.Msg, e
 					Ttl:    uint32(answer.TTL),
 				},
 				Ptr: dns.Fqdn(answer.Data),
+			})
+
+		case dns.TypeTXT:
+			resp.Answer = append(resp.Answer, &dns.TXT{
+				Hdr: dns.RR_Header{
+					Name:   dns.Fqdn(answer.Name),
+					Rrtype: rrType,
+					Class:  dns.ClassINET,
+					Ttl:    uint32(answer.TTL),
+				},
+				// Trim leading and trailing \" from Data
+				Txt: []string{strings.Trim(answer.Data, "\"")},
 			})
 
 		default:
