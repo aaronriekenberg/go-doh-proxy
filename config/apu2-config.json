@@ -36,10 +36,7 @@
     }
   ],
   "proxyConfiguration": {
-    "remoteHTTPURLs": [
-      "https://cloudflare-dns.com/dns-query"
-    ],
-    "padOutgoingRequests": true,
+    "remoteHTTPURL": "https://cloudflare-dns.com/dns-query",
     "clampMinTTLSeconds": 300,
     "clampMaxTTLSeconds": 3600
   },

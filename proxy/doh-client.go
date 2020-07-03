@@ -1,109 +1,58 @@
 package proxy
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/miekg/dns"
 )
 
 type dohClient struct {
-	remoteHTTPURLs      []string
-	padOutgoingRequests bool
+	urlObject url.URL
 }
 
-func newDOHClient(remoteHTTPURLs []string, padOutgoingRequests bool) dohClient {
+func newDOHClient(remoteHTTPURL string) dohClient {
+	urlObject, err := url.Parse(remoteHTTPURL)
+	if err != nil {
+		log.Fatalf("error parsing url %q", remoteHTTPURL)
+	}
+
+	log.Printf("urlObject = %+v", urlObject)
+
 	return dohClient{
-		remoteHTTPURLs:      remoteHTTPURLs,
-		padOutgoingRequests: padOutgoingRequests,
+		urlObject: *urlObject,
 	}
-}
-
-func (dohClient *dohClient) padRequestMsg(r *dns.Msg) {
-	if !dohClient.padOutgoingRequests {
-		return
-	}
-
-	const padBlockLength = 128 // RFC8467 section 4.1
-	const defaultOPTName = "."
-	const defaultUDPSize = 4096
-
-	// remove existing padding and find OPT record
-	var optRecord *dns.OPT
-	for _, extra := range r.Extra {
-		if extra.Header().Rrtype == dns.TypeOPT {
-			if opt, ok := extra.(*dns.OPT); ok {
-				optRecord = opt
-				var optionSliceWithoutPadding []dns.EDNS0
-				for _, option := range opt.Option {
-					if option.Option() != dns.EDNS0PADDING {
-						optionSliceWithoutPadding = append(optionSliceWithoutPadding, option)
-					}
-				}
-				opt.Option = optionSliceWithoutPadding
-			}
-		}
-	}
-	if optRecord == nil {
-		optRecord = &dns.OPT{
-			Hdr: dns.RR_Header{
-				Name:   defaultOPTName,
-				Rrtype: dns.TypeOPT,
-				Class:  dns.ClassINET,
-			},
-		}
-		optRecord.SetUDPSize(defaultUDPSize)
-		r.Extra = append(r.Extra, optRecord)
-	}
-
-	// Adding EDNS0 padding option will include 4 byte length header.
-	msgLength := r.Len() + 4
-
-	neededPadBytes := padBlockLength - (msgLength % padBlockLength)
-
-	optRecord.Option = append(optRecord.Option, &dns.EDNS0_PADDING{
-		Padding: make([]byte, neededPadBytes),
-	})
-}
-
-func (dohClient *dohClient) pickRandomRemoteHTTPURL() string {
-	length := len(dohClient.remoteHTTPURLs)
-
-	if length == 1 {
-		return dohClient.remoteHTTPURLs[0]
-	}
-
-	return dohClient.remoteHTTPURLs[rand.Intn(length)]
 }
 
 func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (resp *dns.Msg, err error) {
-	const requestMethod = "POST"
-	const dnsMessageMIMEType = "application/dns-message"
-	const maxBodyBytes = 65535 // RFC 8484 section 6
+	const requestMethod = "GET"
+	const dnsMessageMIMEType = "application/dns-json"
 	const requestTimeoutSeconds = 5
 
 	ctx, cancel := context.WithTimeout(ctx, requestTimeoutSeconds*time.Second)
 	defer cancel()
 
-	dohClient.padRequestMsg(r)
-
-	packedRequest, err := r.Pack()
-	if err != nil {
-		log.Printf("error packing request %v", err)
+	if len(r.Question) != 1 {
+		err = fmt.Errorf("invalid question len %v", len(r.Question))
 		return
 	}
 
-	remoteURL := dohClient.pickRandomRemoteHTTPURL()
+	question := &(r.Question[0])
 
-	httpRequest, err := http.NewRequestWithContext(ctx, requestMethod, remoteURL, bytes.NewReader(packedRequest))
+	urlObject := dohClient.urlObject
+
+	queryParameters := url.Values{}
+	queryParameters.Set("name", question.Name)
+	queryParameters.Set("type", dns.Type(question.Qtype).String())
+
+	urlObject.RawQuery = queryParameters.Encode()
+
+	httpRequest, err := http.NewRequestWithContext(ctx, requestMethod, urlObject.String(), nil)
 	if err != nil {
 		log.Printf("NewRequest error %v", err)
 		return
@@ -125,21 +74,15 @@ func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 		return
 	}
 
-	bodyBuffer, err := ioutil.ReadAll(io.LimitReader(httpResponse.Body, maxBodyBytes+1))
+	bodyBuffer, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
 		log.Printf("ioutil.ReadAll error %v", err)
 		return
 	}
 
-	if len(bodyBuffer) > maxBodyBytes {
-		err = errors.New("http response body too large")
-		return
-	}
-
-	resp = new(dns.Msg)
-	err = resp.Unpack(bodyBuffer)
+	resp, err = decodeJSONResponse(r, bodyBuffer)
 	if err != nil {
-		log.Printf("Unpack error %v", err)
+		log.Printf("decodeJSONResponse error %v", err)
 		resp = nil
 		return
 	}

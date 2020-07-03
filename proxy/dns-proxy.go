@@ -26,11 +26,8 @@ type dnsProxy struct {
 func NewDNSProxy(configuration *Configuration) DNSProxy {
 	return &dnsProxy{
 		configuration: configuration,
-		dohClient: newDOHClient(
-			configuration.ProxyConfiguration.RemoteHTTPURLs,
-			configuration.ProxyConfiguration.PadOutgoingRequests,
-		),
-		cache: newCache(configuration.CacheConfiguration.MaxSize),
+		dohClient:     newDOHClient(configuration.ProxyConfiguration.RemoteHTTPURL),
+		cache:         newCache(configuration.CacheConfiguration.MaxSize),
 	}
 }
 
