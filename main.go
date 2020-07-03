@@ -20,7 +20,7 @@ func awaitShutdownSignal() {
 }
 
 func main() {
-	log.SetFlags(0)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 
 	log.Printf("gitCommit: %v", gitCommit)
 
