@@ -38,60 +38,44 @@ func decodeJSONResponse(request *dns.Msg, jsonResponse []byte) (resp *dns.Msg, e
 	for i := range dohJSONResponse.Answer {
 		answer := &(dohJSONResponse.Answer[i])
 
+		createRRHeader := func(rrType uint16) dns.RR_Header {
+			return dns.RR_Header{
+				Name:   dns.Fqdn(answer.Name),
+				Rrtype: rrType,
+				Class:  dns.ClassINET,
+				Ttl:    uint32(answer.TTL),
+			}
+		}
+
 		rrType := uint16(answer.Type)
 		switch rrType {
 		case dns.TypeA:
 			resp.Answer = append(resp.Answer, &dns.A{
-				Hdr: dns.RR_Header{
-					Name:   dns.Fqdn(answer.Name),
-					Rrtype: rrType,
-					Class:  dns.ClassINET,
-					Ttl:    uint32(answer.TTL),
-				},
-				A: net.ParseIP(answer.Data),
+				Hdr: createRRHeader(rrType),
+				A:   net.ParseIP(answer.Data),
 			})
 
 		case dns.TypeAAAA:
 			resp.Answer = append(resp.Answer, &dns.AAAA{
-				Hdr: dns.RR_Header{
-					Name:   dns.Fqdn(answer.Name),
-					Rrtype: rrType,
-					Class:  dns.ClassINET,
-					Ttl:    uint32(answer.TTL),
-				},
+				Hdr:  createRRHeader(rrType),
 				AAAA: net.ParseIP(answer.Data),
 			})
 
 		case dns.TypeCNAME:
 			resp.Answer = append(resp.Answer, &dns.CNAME{
-				Hdr: dns.RR_Header{
-					Name:   dns.Fqdn(answer.Name),
-					Rrtype: rrType,
-					Class:  dns.ClassINET,
-					Ttl:    uint32(answer.TTL),
-				},
+				Hdr:    createRRHeader(rrType),
 				Target: dns.Fqdn(answer.Data),
 			})
 
 		case dns.TypePTR:
 			resp.Answer = append(resp.Answer, &dns.PTR{
-				Hdr: dns.RR_Header{
-					Name:   dns.Fqdn(answer.Name),
-					Rrtype: rrType,
-					Class:  dns.ClassINET,
-					Ttl:    uint32(answer.TTL),
-				},
+				Hdr: createRRHeader(rrType),
 				Ptr: dns.Fqdn(answer.Data),
 			})
 
 		case dns.TypeTXT:
 			resp.Answer = append(resp.Answer, &dns.TXT{
-				Hdr: dns.RR_Header{
-					Name:   dns.Fqdn(answer.Name),
-					Rrtype: rrType,
-					Class:  dns.ClassINET,
-					Ttl:    uint32(answer.TTL),
-				},
+				Hdr: createRRHeader(rrType),
 				// Trim leading and trailing \" from Data
 				Txt: []string{strings.Trim(answer.Data, "\"")},
 			})
