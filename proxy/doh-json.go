@@ -32,9 +32,7 @@ type dohJSONConverter struct {
 }
 
 func newDOHJSONConverter() *dohJSONConverter {
-	return &dohJSONConverter{
-		rrTypeMetricsMap: sync.Map{},
-	}
+	return &dohJSONConverter{}
 }
 
 func (dohJSONConverter *dohJSONConverter) recordRRMetric(rrType dns.Type) {
