@@ -39,7 +39,7 @@ func (dohJSONConverter *dohJSONConverter) recordRRMetric(rrType dns.Type) {
 	value, loaded := dohJSONConverter.rrTypeMetricsMap.LoadOrStore(rrType, &rrMetricValue{
 		count: 1,
 	})
-	if !loaded {
+	if loaded {
 		rrMetricValue := value.(*rrMetricValue)
 		atomic.AddUint64(&(rrMetricValue.count), 1)
 	}
