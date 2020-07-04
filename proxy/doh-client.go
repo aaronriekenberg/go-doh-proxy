@@ -13,10 +13,11 @@ import (
 )
 
 type dohClient struct {
-	urlObject url.URL
+	urlObject        url.URL
+	dohJSONConverter *dohJSONConverter
 }
 
-func newDOHClient(remoteHTTPURL string) dohClient {
+func newDOHClient(remoteHTTPURL string, dohJSONConverter *dohJSONConverter) *dohClient {
 	urlObject, err := url.Parse(remoteHTTPURL)
 	if err != nil {
 		log.Fatalf("error parsing url %q", remoteHTTPURL)
@@ -24,8 +25,9 @@ func newDOHClient(remoteHTTPURL string) dohClient {
 
 	log.Printf("urlObject = %+v", urlObject)
 
-	return dohClient{
-		urlObject: *urlObject,
+	return &dohClient{
+		urlObject:        *urlObject,
+		dohJSONConverter: dohJSONConverter,
 	}
 }
 
@@ -80,7 +82,7 @@ func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 		return
 	}
 
-	resp, err = decodeJSONResponse(r, bodyBuffer)
+	resp, err = dohClient.dohJSONConverter.decodeJSONResponse(r, bodyBuffer)
 	if err != nil {
 		log.Printf("decodeJSONResponse error %v", err)
 		resp = nil

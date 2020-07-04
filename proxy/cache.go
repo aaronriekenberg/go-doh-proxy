@@ -42,13 +42,13 @@ type cache struct {
 	lruCache *lru.Cache
 }
 
-func newCache(maxCacheSize int) cache {
+func newCache(maxCacheSize int) *cache {
 	lruCache, err := lru.New(maxCacheSize)
 	if err != nil {
 		log.Fatalf("error creating cache %v", err)
 	}
 
-	return cache{
+	return &cache{
 		lruCache: lruCache,
 	}
 }

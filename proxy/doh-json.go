@@ -5,9 +5,15 @@ import (
 	"log"
 	"net"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/miekg/dns"
 )
+
+type rrMetricValue struct {
+	count uint64
+}
 
 type dohJSONResponseAnswer struct {
 	Name string `json:"name"`
@@ -21,7 +27,38 @@ type dohJSONResponse struct {
 	Answer []dohJSONResponseAnswer `json:"Answer"`
 }
 
-func decodeJSONResponse(request *dns.Msg, jsonResponse []byte) (resp *dns.Msg, err error) {
+type dohJSONConverter struct {
+	rrTypeMetricsMap sync.Map
+}
+
+func newDOHJSONConverter() *dohJSONConverter {
+	return &dohJSONConverter{
+		rrTypeMetricsMap: sync.Map{},
+	}
+}
+
+func (dohJSONConverter *dohJSONConverter) recordRRMetric(rrType dns.Type) {
+	value, loaded := dohJSONConverter.rrTypeMetricsMap.LoadOrStore(rrType, &rrMetricValue{
+		count: 1,
+	})
+	if !loaded {
+		rrMetricValue := value.(*rrMetricValue)
+		atomic.AddUint64(&(rrMetricValue.count), 1)
+	}
+}
+
+func (dohJSONConverter *dohJSONConverter) rrTypeMetricsMapSnapshot() map[dns.Type]uint64 {
+	localMap := make(map[dns.Type]uint64)
+	dohJSONConverter.rrTypeMetricsMap.Range(func(key, value interface{}) bool {
+		rrType := key.(dns.Type)
+		rrMetricValue := value.(*rrMetricValue)
+		localMap[rrType] = atomic.LoadUint64(&rrMetricValue.count)
+		return true
+	})
+	return localMap
+}
+
+func (dohJSONConverter *dohJSONConverter) decodeJSONResponse(request *dns.Msg, jsonResponse []byte) (resp *dns.Msg, err error) {
 	var dohJSONResponse dohJSONResponse
 
 	err = json.Unmarshal(jsonResponse, &dohJSONResponse)
@@ -38,6 +75,8 @@ func decodeJSONResponse(request *dns.Msg, jsonResponse []byte) (resp *dns.Msg, e
 	for i := range dohJSONResponse.Answer {
 		answer := &(dohJSONResponse.Answer[i])
 		rrType := uint16(answer.Type)
+
+		dohJSONConverter.recordRRMetric(dns.Type(answer.Type))
 
 		createRRHeader := func() dns.RR_Header {
 			return dns.RR_Header{
