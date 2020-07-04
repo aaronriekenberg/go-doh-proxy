@@ -37,8 +37,9 @@ func decodeJSONResponse(request *dns.Msg, jsonResponse []byte) (resp *dns.Msg, e
 
 	for i := range dohJSONResponse.Answer {
 		answer := &(dohJSONResponse.Answer[i])
+		rrType := uint16(answer.Type)
 
-		createRRHeader := func(rrType uint16) dns.RR_Header {
+		createRRHeader := func() dns.RR_Header {
 			return dns.RR_Header{
 				Name:   dns.Fqdn(answer.Name),
 				Rrtype: rrType,
@@ -47,35 +48,34 @@ func decodeJSONResponse(request *dns.Msg, jsonResponse []byte) (resp *dns.Msg, e
 			}
 		}
 
-		rrType := uint16(answer.Type)
 		switch rrType {
 		case dns.TypeA:
 			resp.Answer = append(resp.Answer, &dns.A{
-				Hdr: createRRHeader(rrType),
+				Hdr: createRRHeader(),
 				A:   net.ParseIP(answer.Data),
 			})
 
 		case dns.TypeAAAA:
 			resp.Answer = append(resp.Answer, &dns.AAAA{
-				Hdr:  createRRHeader(rrType),
+				Hdr:  createRRHeader(),
 				AAAA: net.ParseIP(answer.Data),
 			})
 
 		case dns.TypeCNAME:
 			resp.Answer = append(resp.Answer, &dns.CNAME{
-				Hdr:    createRRHeader(rrType),
+				Hdr:    createRRHeader(),
 				Target: dns.Fqdn(answer.Data),
 			})
 
 		case dns.TypePTR:
 			resp.Answer = append(resp.Answer, &dns.PTR{
-				Hdr: createRRHeader(rrType),
+				Hdr: createRRHeader(),
 				Ptr: dns.Fqdn(answer.Data),
 			})
 
 		case dns.TypeTXT:
 			resp.Answer = append(resp.Answer, &dns.TXT{
-				Hdr: createRRHeader(rrType),
+				Hdr: createRRHeader(),
 				// Trim leading and trailing \" from Data
 				Txt: []string{strings.Trim(answer.Data, "\"")},
 			})
