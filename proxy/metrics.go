@@ -8,6 +8,10 @@ import (
 	"github.com/miekg/dns"
 )
 
+type metricValue struct {
+	count uint64
+}
+
 type metrics struct {
 	nonAtomicCacheHits           uint64
 	nonAtomicCacheMisses         uint64

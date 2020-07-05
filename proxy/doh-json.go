@@ -9,10 +9,6 @@ import (
 	"github.com/miekg/dns"
 )
 
-type metricValue struct {
-	count uint64
-}
-
 type dohJSONResponseAnswer struct {
 	Name string `json:"name"`
 	Type int    `json:"type"`
