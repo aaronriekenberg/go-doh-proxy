@@ -17,18 +17,20 @@ type DNSProxy interface {
 
 type dnsProxy struct {
 	configuration    *Configuration
+	metrics          *metrics
 	dohJSONConverter *dohJSONConverter
 	dohClient        *dohClient
 	cache            *cache
-	metrics          metrics
 }
 
 // NewDNSProxy creates a DNS proxy.
 func NewDNSProxy(configuration *Configuration) DNSProxy {
-	dohJSONConverter := newDOHJSONConverter()
+	metrics := newMetrics()
+	dohJSONConverter := newDOHJSONConverter(metrics)
 
 	return &dnsProxy{
 		configuration:    configuration,
+		metrics:          metrics,
 		dohJSONConverter: dohJSONConverter,
 		dohClient:        newDOHClient(configuration.ProxyConfiguration.RemoteHTTPURL, dohJSONConverter),
 		cache:            newCache(configuration.CacheConfiguration.MaxSize),
@@ -318,12 +320,8 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 
 		cacheItemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.CacheConfiguration.MaxPurgesPerTimerPop)
 
-		rcodeMericsMap := dnsProxy.dohJSONConverter.rcodeMetricsMapSnapshot()
-
-		rrTypeMetricsMap := dnsProxy.dohJSONConverter.rrTypeMetricsMapSnapshot()
-
-		log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v rcodeMericsMap = %v rrTypeMetricsMap = %v",
-			&dnsProxy.metrics, dnsProxy.cache.len(), cacheItemsPurged, rcodeMericsMap, rrTypeMetricsMap)
+		log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v",
+			dnsProxy.metrics, dnsProxy.cache.len(), cacheItemsPurged)
 	}
 }
 
