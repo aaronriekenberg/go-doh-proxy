@@ -12,13 +12,27 @@ type metricValue struct {
 	count uint64
 }
 
+func newMetricValue(count uint64) *metricValue {
+	return &metricValue{
+		count: count,
+	}
+}
+
+func (metricValue *metricValue) incrementCount() {
+	atomic.AddUint64(&(metricValue.count), 1)
+}
+
+func (metricValue *metricValue) loadCount() uint64 {
+	return atomic.LoadUint64(&(metricValue.count))
+}
+
 type metrics struct {
-	nonAtomicCacheHits           uint64
-	nonAtomicCacheMisses         uint64
-	nonAtomicDOHClientErrors     uint64
-	nonAtomicWriteResponseErrors uint64
-	rcodeMetricsMap              sync.Map
-	rrTypeMetricsMap             sync.Map
+	cacheHitsValue           metricValue
+	cacheMissesValue         metricValue
+	dohClientErrorsValue     metricValue
+	writeResponseErrorsValue metricValue
+	rcodeMetricsMap          sync.Map
+	rrTypeMetricsMap         sync.Map
 }
 
 func newMetrics() *metrics {
@@ -26,35 +40,35 @@ func newMetrics() *metrics {
 }
 
 func (metrics *metrics) incrementCacheHits() {
-	atomic.AddUint64(&metrics.nonAtomicCacheHits, 1)
+	metrics.cacheHitsValue.incrementCount()
 }
 
 func (metrics *metrics) cacheHits() uint64 {
-	return atomic.LoadUint64(&metrics.nonAtomicCacheHits)
+	return metrics.cacheHitsValue.loadCount()
 }
 
 func (metrics *metrics) incrementCacheMisses() {
-	atomic.AddUint64(&metrics.nonAtomicCacheMisses, 1)
+	metrics.cacheMissesValue.incrementCount()
 }
 
 func (metrics *metrics) cacheMisses() uint64 {
-	return atomic.LoadUint64(&metrics.nonAtomicCacheMisses)
+	return metrics.cacheMissesValue.loadCount()
 }
 
 func (metrics *metrics) incrementDOHClientErrors() {
-	atomic.AddUint64(&metrics.nonAtomicDOHClientErrors, 1)
+	metrics.dohClientErrorsValue.incrementCount()
 }
 
 func (metrics *metrics) dohClientErrors() uint64 {
-	return atomic.LoadUint64(&metrics.nonAtomicDOHClientErrors)
+	return metrics.dohClientErrorsValue.loadCount()
 }
 
 func (metrics *metrics) incrementWriteResponseErrors() {
-	atomic.AddUint64(&metrics.nonAtomicWriteResponseErrors, 1)
+	metrics.writeResponseErrorsValue.incrementCount()
 }
 
 func (metrics *metrics) writeResponseErrors() uint64 {
-	return atomic.LoadUint64(&metrics.nonAtomicWriteResponseErrors)
+	return metrics.writeResponseErrorsValue.loadCount()
 }
 
 func (metrics *metrics) recordRcodeMetric(rcode int) {
@@ -62,14 +76,11 @@ func (metrics *metrics) recordRcodeMetric(rcode int) {
 	value, loaded := metrics.rcodeMetricsMap.Load(rcode)
 
 	if !loaded {
-		value, loaded = metrics.rcodeMetricsMap.LoadOrStore(rcode, &metricValue{
-			count: 1,
-		})
+		value, loaded = metrics.rcodeMetricsMap.LoadOrStore(rcode, newMetricValue(1))
 	}
 
 	if loaded {
-		rrMetricValue := value.(*metricValue)
-		atomic.AddUint64(&(rrMetricValue.count), 1)
+		value.(*metricValue).incrementCount()
 	}
 }
 
@@ -84,7 +95,7 @@ func (metrics *metrics) rcodeMetricsMapSnapshot() map[string]uint64 {
 			rcodeString = fmt.Sprintf("UNKNOWN:%v", rcode)
 		}
 		rrMetricValue := value.(*metricValue)
-		localMap[rcodeString] = atomic.LoadUint64(&rrMetricValue.count)
+		localMap[rcodeString] = rrMetricValue.loadCount()
 		return true
 	})
 
@@ -96,14 +107,11 @@ func (metrics *metrics) recordRRTypeMetric(rrType dns.Type) {
 	value, loaded := metrics.rrTypeMetricsMap.Load(rrType)
 
 	if !loaded {
-		value, loaded = metrics.rrTypeMetricsMap.LoadOrStore(rrType, &metricValue{
-			count: 1,
-		})
+		value, loaded = metrics.rrTypeMetricsMap.LoadOrStore(rrType, newMetricValue(1))
 	}
 
 	if loaded {
-		rrMetricValue := value.(*metricValue)
-		atomic.AddUint64(&(rrMetricValue.count), 1)
+		value.(*metricValue).incrementCount()
 	}
 }
 
@@ -114,7 +122,7 @@ func (metrics *metrics) rrTypeMetricsMapSnapshot() map[dns.Type]uint64 {
 	metrics.rrTypeMetricsMap.Range(func(key, value interface{}) bool {
 		rrType := key.(dns.Type)
 		rrMetricValue := value.(*metricValue)
-		localMap[rrType] = atomic.LoadUint64(&rrMetricValue.count)
+		localMap[rrType] = rrMetricValue.loadCount()
 		return true
 	})
 
