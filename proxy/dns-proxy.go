@@ -318,10 +318,12 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 
 		cacheItemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.CacheConfiguration.MaxPurgesPerTimerPop)
 
+		rcodeMericsMap := dnsProxy.dohJSONConverter.rcodeMetricsMapSnapshot()
+
 		rrTypeMetricsMap := dnsProxy.dohJSONConverter.rrTypeMetricsMapSnapshot()
 
-		log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v rrTypeMetricsMap = %v",
-			&dnsProxy.metrics, dnsProxy.cache.len(), cacheItemsPurged, rrTypeMetricsMap)
+		log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v rcodeMericsMap = %v rrTypeMetricsMap = %v",
+			&dnsProxy.metrics, dnsProxy.cache.len(), cacheItemsPurged, rcodeMericsMap, rrTypeMetricsMap)
 	}
 }
 
