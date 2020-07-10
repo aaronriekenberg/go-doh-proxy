@@ -181,7 +181,7 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		responseMsg, err := dnsProxy.dohClient.makeRequest(ctx, r)
 		if err != nil {
 			dnsProxy.metrics.incrementDOHClientErrors()
-			log.Printf("makeHttpRequest error %v", err)
+			log.Printf("makeHttpRequest error: %v", err)
 			r.Id = requestID
 			dns.HandleFailed(w, r)
 			return

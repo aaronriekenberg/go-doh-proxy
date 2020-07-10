@@ -74,7 +74,7 @@ func (dohClient *dohClient) internalMakeHTTPRequest(ctx context.Context, urlStri
 
 	err = dohClient.acquireSemaphore(ctx)
 	if err != nil {
-		log.Printf("dohClient.acquireSemaphore error %v", err)
+		err = fmt.Errorf("dohClient.acquireSemaphore error: %w", err)
 		return
 	}
 	defer dohClient.releaseSemaphore()
@@ -84,7 +84,7 @@ func (dohClient *dohClient) internalMakeHTTPRequest(ctx context.Context, urlStri
 
 	httpRequest, err := http.NewRequestWithContext(ctx, requestMethod, urlString, nil)
 	if err != nil {
-		log.Printf("NewRequest error %v", err)
+		err = fmt.Errorf("http.NewRequestWithContext error: %w", err)
 		return
 	}
 
@@ -94,7 +94,7 @@ func (dohClient *dohClient) internalMakeHTTPRequest(ctx context.Context, urlStri
 
 	httpResponse, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
-		log.Printf("DefaultClient.Do error %v", err)
+		err = fmt.Errorf("DefaultClient.Do error: %w", err)
 		return
 	}
 	defer httpResponse.Body.Close()
@@ -106,7 +106,7 @@ func (dohClient *dohClient) internalMakeHTTPRequest(ctx context.Context, urlStri
 
 	responseBuffer, err = ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
-		log.Printf("ioutil.ReadAll error %v", err)
+		err = fmt.Errorf("ioutil.ReadAll error: %w", err)
 		responseBuffer = nil
 		return
 	}

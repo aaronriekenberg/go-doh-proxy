@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -36,7 +37,7 @@ func (dohJSONConverter *dohJSONConverter) decodeJSONResponse(request *dns.Msg, j
 
 	err = json.Unmarshal(jsonResponse, &dohJSONResponse)
 	if err != nil {
-		log.Printf("error decoding json response %v", err)
+		err = fmt.Errorf("error decoding json response: %w", err)
 		return
 	}
 

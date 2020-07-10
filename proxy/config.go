@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -81,11 +82,13 @@ func ReadConfiguration(configFile string) (*Configuration, error) {
 
 	source, err := ioutil.ReadFile(configFile)
 	if err != nil {
+		err = fmt.Errorf("ioutil.ReadFile error: %w", err)
 		return nil, err
 	}
 
 	var config Configuration
 	if err = json.Unmarshal(source, &config); err != nil {
+		err = fmt.Errorf("json.Unmarshal error: %w", err)
 		return nil, err
 	}
 
