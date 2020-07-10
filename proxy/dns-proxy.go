@@ -32,7 +32,7 @@ func NewDNSProxy(configuration *Configuration) DNSProxy {
 		configuration:    configuration,
 		metrics:          metrics,
 		dohJSONConverter: dohJSONConverter,
-		dohClient:        newDOHClient(configuration.ProxyConfiguration.RemoteHTTPURL, dohJSONConverter),
+		dohClient:        newDOHClient(configuration.DOHClientConfiguration, dohJSONConverter),
 		cache:            newCache(configuration.CacheConfiguration.MaxSize),
 	}
 }
@@ -178,7 +178,7 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
 		dnsProxy.metrics.incrementCacheMisses()
 		r.Id = 0
-		responseMsg, err := dnsProxy.dohClient.makeHTTPRequest(ctx, r)
+		responseMsg, err := dnsProxy.dohClient.makeRequest(ctx, r)
 		if err != nil {
 			dnsProxy.metrics.incrementDOHClientErrors()
 			log.Printf("makeHttpRequest error %v", err)

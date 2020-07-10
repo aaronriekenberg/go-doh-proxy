@@ -10,43 +10,41 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"golang.org/x/sync/semaphore"
 )
 
 type dohClient struct {
-	urlObject        url.URL
-	dohJSONConverter *dohJSONConverter
+	urlObject               url.URL
+	sepaphoreAcquireTimeout time.Duration
+	requestTimeout          time.Duration
+	semaphore               *semaphore.Weighted
+	dohJSONConverter        *dohJSONConverter
 }
 
-func newDOHClient(remoteHTTPURL string, dohJSONConverter *dohJSONConverter) *dohClient {
-	urlObject, err := url.Parse(remoteHTTPURL)
+func newDOHClient(configuration DOHClientConfiguration, dohJSONConverter *dohJSONConverter) *dohClient {
+	urlObject, err := url.Parse(configuration.URL)
 	if err != nil {
-		log.Fatalf("error parsing url %q", remoteHTTPURL)
+		log.Fatalf("error parsing url %q", configuration.URL)
 	}
-
-	log.Printf("urlObject = %+v", urlObject)
 
 	return &dohClient{
-		urlObject:        *urlObject,
-		dohJSONConverter: dohJSONConverter,
+		urlObject:               *urlObject,
+		sepaphoreAcquireTimeout: (time.Duration(configuration.SemaphoreAcquireTimeoutMilliseconds) * time.Millisecond),
+		requestTimeout:          (time.Duration(configuration.RequestTimeoutMilliseconds) * time.Millisecond),
+		dohJSONConverter:        dohJSONConverter,
+		semaphore:               semaphore.NewWeighted(configuration.MaxConcurrentRequests),
 	}
 }
 
-func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (resp *dns.Msg, err error) {
-	const requestMethod = "GET"
-	const dnsMessageMIMEType = "application/dns-json"
-	const requestTimeoutSeconds = 5
+func (dohClient *dohClient) buildRequestURL(request *dns.Msg) (urlString string, err error) {
+	urlObject := dohClient.urlObject
 
-	ctx, cancel := context.WithTimeout(ctx, requestTimeoutSeconds*time.Second)
-	defer cancel()
-
-	if len(r.Question) != 1 {
-		err = fmt.Errorf("invalid question len %v", len(r.Question))
+	if len(request.Question) != 1 {
+		err = fmt.Errorf("invalid question len %v request %v", len(request.Question), request)
 		return
 	}
 
-	question := &(r.Question[0])
-
-	urlObject := dohClient.urlObject
+	question := &(request.Question[0])
 
 	queryParameters := url.Values{}
 	queryParameters.Set("name", question.Name)
@@ -54,7 +52,37 @@ func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 
 	urlObject.RawQuery = queryParameters.Encode()
 
-	httpRequest, err := http.NewRequestWithContext(ctx, requestMethod, urlObject.String(), nil)
+	urlString = urlObject.String()
+	return
+}
+
+func (dohClient *dohClient) acquireSemaphore(ctx context.Context) (err error) {
+	ctx, cancel := context.WithTimeout(ctx, dohClient.sepaphoreAcquireTimeout)
+	defer cancel()
+
+	err = dohClient.semaphore.Acquire(ctx, 1)
+	return
+}
+
+func (dohClient *dohClient) releaseSemaphore() {
+	dohClient.semaphore.Release(1)
+}
+
+func (dohClient *dohClient) internalMakeHTTPRequest(ctx context.Context, urlString string) (responseBuffer []byte, err error) {
+	const requestMethod = "GET"
+	const dnsMessageMIMEType = "application/dns-json"
+
+	err = dohClient.acquireSemaphore(ctx)
+	if err != nil {
+		log.Printf("dohClient.acquireSemaphore error %v", err)
+		return
+	}
+	defer dohClient.releaseSemaphore()
+
+	ctx, cancel := context.WithTimeout(ctx, dohClient.requestTimeout)
+	defer cancel()
+
+	httpRequest, err := http.NewRequestWithContext(ctx, requestMethod, urlString, nil)
 	if err != nil {
 		log.Printf("NewRequest error %v", err)
 		return
@@ -76,16 +104,30 @@ func (dohClient *dohClient) makeHTTPRequest(ctx context.Context, r *dns.Msg) (re
 		return
 	}
 
-	bodyBuffer, err := ioutil.ReadAll(httpResponse.Body)
+	responseBuffer, err = ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
 		log.Printf("ioutil.ReadAll error %v", err)
+		responseBuffer = nil
 		return
 	}
 
-	resp, err = dohClient.dohJSONConverter.decodeJSONResponse(r, bodyBuffer)
+	return
+}
+
+func (dohClient *dohClient) makeRequest(ctx context.Context, request *dns.Msg) (responseMessage *dns.Msg, err error) {
+	urlString, err := dohClient.buildRequestURL(request)
 	if err != nil {
-		log.Printf("decodeJSONResponse error %v", err)
-		resp = nil
+		return
+	}
+
+	responseBuffer, err := dohClient.internalMakeHTTPRequest(ctx, urlString)
+	if err != nil {
+		return
+	}
+
+	responseMessage, err = dohClient.dohJSONConverter.decodeJSONResponse(request, responseBuffer)
+	if err != nil {
+		responseMessage = nil
 		return
 	}
 

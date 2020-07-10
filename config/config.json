@@ -35,8 +35,13 @@
       "responseTTLSeconds": 60
     }
   ],
+  "dohClientConfiguration": {
+    "url": "https://cloudflare-dns.com/dns-query",
+    "maxConcurrentRequests": 100,
+    "semaphoreAcquireTimeoutMilliseconds": 2000,
+    "requestTimeoutMilliseconds": 5000
+  },
   "proxyConfiguration": {
-    "remoteHTTPURL": "https://cloudflare-dns.com/dns-query",
     "clampMinTTLSeconds": 10,
     "clampMaxTTLSeconds": 30
   },

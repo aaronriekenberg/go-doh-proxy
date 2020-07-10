@@ -94,7 +94,7 @@ func (dohJSONConverter *dohJSONConverter) decodeJSONResponse(request *dns.Msg, j
 			})
 
 		default:
-			log.Printf("unknown json rrType request = %+v rrType = %v", request, rrType)
+			log.Printf("unknown json rrType request = %v rrType = %v", request, rrType)
 		}
 	}
 

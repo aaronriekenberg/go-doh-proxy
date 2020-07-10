@@ -44,9 +44,16 @@ type ReverseDomainConfiguration struct {
 	ResponseTTLSeconds uint32                 `json:"responseTTLSeconds"`
 }
 
+// DOHClientConfiguration is the DOH client configuration
+type DOHClientConfiguration struct {
+	URL                                 string `json:"url"`
+	MaxConcurrentRequests               int64  `json:"maxConcurrentRequests"`
+	SemaphoreAcquireTimeoutMilliseconds int    `json:"semaphoreAcquireTimeoutMilliseconds"`
+	RequestTimeoutMilliseconds          int    `json:"requestTimeoutMilliseconds"`
+}
+
 // ProxyConfiguration is the proxy configuration.
 type ProxyConfiguration struct {
-	RemoteHTTPURL      string `json:"remoteHTTPURL"`
 	ClampMinTTLSeconds uint32 `json:"clampMinTTLSeconds"`
 	ClampMaxTTLSeconds uint32 `json:"clampMaxTTLSeconds"`
 }
@@ -62,6 +69,7 @@ type Configuration struct {
 	ListenAddress               HostAndPort                  `json:"listenAddress"`
 	ForwardDomainConfigurations []ForwardDomainConfiguration `json:"forwardDomainConfigurations"`
 	ReverseDomainConfigurations []ReverseDomainConfiguration `json:"reverseDomainConfigurations"`
+	DOHClientConfiguration      DOHClientConfiguration       `json:"dohClientConfiguration"`
 	ProxyConfiguration          ProxyConfiguration           `json:"proxyConfiguration"`
 	CacheConfiguration          CacheConfiguration           `json:"cacheConfiguration"`
 	TimerIntervalSeconds        int                          `json:"timerIntervalSeconds"`
