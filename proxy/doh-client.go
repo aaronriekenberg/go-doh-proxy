@@ -27,10 +27,15 @@ func newDOHClient(configuration DOHClientConfiguration, dohJSONConverter *dohJSO
 		log.Fatalf("error parsing url %q", configuration.URL)
 	}
 
+	sepaphoreAcquireTimeout := time.Duration(configuration.SemaphoreAcquireTimeoutMilliseconds) * time.Millisecond
+	requestTimeout := time.Duration(configuration.RequestTimeoutMilliseconds) * time.Millisecond
+
+	log.Printf("newDOHClient sepaphoreAcquireTimeout = %v requestTimeout = %v maxConcurrentRequests = %v", sepaphoreAcquireTimeout, requestTimeout, configuration.MaxConcurrentRequests)
+
 	return &dohClient{
 		urlObject:               *urlObject,
-		sepaphoreAcquireTimeout: (time.Duration(configuration.SemaphoreAcquireTimeoutMilliseconds) * time.Millisecond),
-		requestTimeout:          (time.Duration(configuration.RequestTimeoutMilliseconds) * time.Millisecond),
+		sepaphoreAcquireTimeout: sepaphoreAcquireTimeout,
+		requestTimeout:          requestTimeout,
 		dohJSONConverter:        dohJSONConverter,
 		semaphore:               semaphore.NewWeighted(configuration.MaxConcurrentRequests),
 	}
