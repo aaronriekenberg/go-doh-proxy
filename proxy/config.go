@@ -47,9 +47,10 @@ type ReverseDomainConfiguration struct {
 
 // DOHClientConfiguration is the DOH client configuration
 type DOHClientConfiguration struct {
-	URL                        string `json:"url"`
-	MaxConcurrentRequests      int64  `json:"maxConcurrentRequests"`
-	RequestTimeoutMilliseconds int    `json:"requestTimeoutMilliseconds"`
+	URL                                 string `json:"url"`
+	MaxConcurrentRequests               int64  `json:"maxConcurrentRequests"`
+	SemaphoreAcquireTimeoutMilliseconds int    `json:"semaphoreAcquireTimeoutMilliseconds"`
+	RequestTimeoutMilliseconds          int    `json:"requestTimeoutMilliseconds"`
 }
 
 // ProxyConfiguration is the proxy configuration.

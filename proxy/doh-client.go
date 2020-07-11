@@ -14,10 +14,11 @@ import (
 )
 
 type dohClient struct {
-	urlObject        url.URL
-	requestTimeout   time.Duration
-	semaphore        *semaphore.Weighted
-	dohJSONConverter *dohJSONConverter
+	urlObject               url.URL
+	sepaphoreAcquireTimeout time.Duration
+	requestTimeout          time.Duration
+	semaphore               *semaphore.Weighted
+	dohJSONConverter        *dohJSONConverter
 }
 
 func newDOHClient(configuration DOHClientConfiguration, dohJSONConverter *dohJSONConverter) *dohClient {
@@ -27,10 +28,11 @@ func newDOHClient(configuration DOHClientConfiguration, dohJSONConverter *dohJSO
 	}
 
 	return &dohClient{
-		urlObject:        *urlObject,
-		requestTimeout:   (time.Duration(configuration.RequestTimeoutMilliseconds) * time.Millisecond),
-		dohJSONConverter: dohJSONConverter,
-		semaphore:        semaphore.NewWeighted(configuration.MaxConcurrentRequests),
+		urlObject:               *urlObject,
+		sepaphoreAcquireTimeout: (time.Duration(configuration.SemaphoreAcquireTimeoutMilliseconds) * time.Millisecond),
+		requestTimeout:          (time.Duration(configuration.RequestTimeoutMilliseconds) * time.Millisecond),
+		dohJSONConverter:        dohJSONConverter,
+		semaphore:               semaphore.NewWeighted(configuration.MaxConcurrentRequests),
 	}
 }
 
@@ -54,10 +56,11 @@ func (dohClient *dohClient) buildRequestURL(request *dns.Msg) (urlString string,
 	return
 }
 
-func (dohClient *dohClient) acquireSemaphore() (err error) {
-	if !dohClient.semaphore.TryAcquire(1) {
-		err = fmt.Errorf("semaphore.TryAcquire failed")
-	}
+func (dohClient *dohClient) acquireSemaphore(ctx context.Context) (err error) {
+	ctx, cancel := context.WithTimeout(ctx, dohClient.sepaphoreAcquireTimeout)
+	defer cancel()
+
+	err = dohClient.semaphore.Acquire(ctx, 1)
 	return
 }
 
@@ -69,7 +72,7 @@ func (dohClient *dohClient) internalMakeHTTPRequest(ctx context.Context, urlStri
 	const requestMethod = "GET"
 	const dnsMessageMIMEType = "application/dns-json"
 
-	err = dohClient.acquireSemaphore()
+	err = dohClient.acquireSemaphore(ctx)
 	if err != nil {
 		err = fmt.Errorf("dohClient.acquireSemaphore error: %w", err)
 		return
