@@ -85,7 +85,6 @@ func (dohClient *dohClient) internalMakeHTTPRequest(ctx context.Context, urlStri
 		return
 	}
 
-	httpRequest.Header.Set("Content-Type", dnsMessageMIMEType)
 	httpRequest.Header.Set("Accept", dnsMessageMIMEType)
 	httpRequest.Header.Set("User-Agent", "")
 
