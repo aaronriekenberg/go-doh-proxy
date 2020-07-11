@@ -38,8 +38,8 @@
   "dohClientConfiguration": {
     "url": "https://cloudflare-dns.com/dns-query",
     "maxConcurrentRequests": 100,
-    "semaphoreAcquireTimeoutMilliseconds": 500,
-    "requestTimeoutMilliseconds": 5000
+    "semaphoreAcquireTimeoutMilliseconds": 100,
+    "requestTimeoutMilliseconds": 2000
   },
   "proxyConfiguration": {
     "clampMinTTLSeconds": 10,
