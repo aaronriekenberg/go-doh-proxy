@@ -16,24 +16,21 @@ type DNSProxy interface {
 }
 
 type dnsProxy struct {
-	configuration    *Configuration
-	metrics          *metrics
-	dohJSONConverter *dohJSONConverter
-	dohClient        *dohClient
-	cache            *cache
+	configuration *Configuration
+	metrics       *metrics
+	dohClient     *dohClient
+	cache         *cache
 }
 
 // NewDNSProxy creates a DNS proxy.
 func NewDNSProxy(configuration *Configuration) DNSProxy {
 	metrics := newMetrics()
-	dohJSONConverter := newDOHJSONConverter(metrics)
 
 	return &dnsProxy{
-		configuration:    configuration,
-		metrics:          metrics,
-		dohJSONConverter: dohJSONConverter,
-		dohClient:        newDOHClient(configuration.DOHClientConfiguration, dohJSONConverter),
-		cache:            newCache(configuration.CacheConfiguration.MaxSize),
+		configuration: configuration,
+		metrics:       metrics,
+		dohClient:     newDOHClient(configuration.DOHClientConfiguration, newDOHJSONConverter(metrics)),
+		cache:         newCache(configuration.CacheConfiguration.MaxSize),
 	}
 }
 
