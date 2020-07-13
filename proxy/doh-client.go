@@ -41,15 +41,8 @@ func newDOHClient(configuration DOHClientConfiguration, dohJSONConverter *dohJSO
 	}
 }
 
-func (dohClient *dohClient) buildRequestURL(request *dns.Msg) (urlString string, err error) {
+func (dohClient *dohClient) buildRequestURL(question *dns.Question) string {
 	urlObject := dohClient.urlObject
-
-	if len(request.Question) != 1 {
-		err = fmt.Errorf("invalid question len %v request %v", len(request.Question), request)
-		return
-	}
-
-	question := &(request.Question[0])
 
 	queryParameters := url.Values{}
 	queryParameters.Set("name", question.Name)
@@ -57,8 +50,7 @@ func (dohClient *dohClient) buildRequestURL(request *dns.Msg) (urlString string,
 
 	urlObject.RawQuery = queryParameters.Encode()
 
-	urlString = urlObject.String()
-	return
+	return urlObject.String()
 }
 
 func (dohClient *dohClient) acquireSemaphore(ctx context.Context) (err error) {
@@ -119,10 +111,14 @@ func (dohClient *dohClient) internalMakeHTTPRequest(ctx context.Context, urlStri
 }
 
 func (dohClient *dohClient) makeRequest(ctx context.Context, request *dns.Msg) (responseMessage *dns.Msg, err error) {
-	urlString, err := dohClient.buildRequestURL(request)
-	if err != nil {
+	if len(request.Question) != 1 {
+		err = fmt.Errorf("invalid question len %v request %v", len(request.Question), request)
 		return
 	}
+
+	question := &(request.Question[0])
+
+	urlString := dohClient.buildRequestURL(question)
 
 	responseBuffer, err := dohClient.internalMakeHTTPRequest(ctx, urlString)
 	if err != nil {

@@ -3,25 +3,14 @@ package proxy
 import (
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/miekg/dns"
 )
 
-func getCacheKey(m *dns.Msg) string {
-	if len(m.Question) == 0 {
-		return ""
-	}
-
-	var builder strings.Builder
-
-	for _, question := range m.Question {
-		fmt.Fprintf(&builder, "|%s:%d:%d", strings.ToLower(question.Name), question.Qtype, question.Qclass)
-	}
-
-	return builder.String()
+func getCacheKey(question *dns.Question) string {
+	return fmt.Sprintf("%s:%d", dns.CanonicalName(question.Name), question.Qtype)
 }
 
 type cacheObject struct {

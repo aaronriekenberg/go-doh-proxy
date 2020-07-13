@@ -20,6 +20,7 @@ type dnsProxy struct {
 	metrics       *metrics
 	dohClient     *dohClient
 	cache         *cache
+	prefetch      *prefetch
 }
 
 // NewDNSProxy creates a DNS proxy.
@@ -31,6 +32,7 @@ func NewDNSProxy(configuration *Configuration) DNSProxy {
 		metrics:       metrics,
 		dohClient:     newDOHClient(configuration.DOHClientConfiguration, newDOHJSONConverter(metrics)),
 		cache:         newCache(configuration.CacheConfiguration.MaxSize),
+		prefetch:      newPrefetch(),
 	}
 }
 
@@ -149,22 +151,60 @@ func (dnsProxy *dnsProxy) clampTTLAndCacheResponse(cacheKey string, resp *dns.Ms
 	dnsProxy.cache.add(cacheKey, cacheObject)
 }
 
-func (dnsProxy *dnsProxy) writeResponse(w dns.ResponseWriter, r *dns.Msg) {
-	if err := w.WriteMsg(r); err != nil {
+func (dnsProxy *dnsProxy) addToPrefetch(cacheKey string, question *dns.Question, response *dns.Msg) {
+	log.Printf("addToPrefetch rcode = %v", response.Rcode)
+
+	if response.Rcode != dns.RcodeSuccess {
+		return
+	}
+
+	dnsProxy.prefetch.addToPrefetch(cacheKey, question)
+}
+
+func (dnsProxy *dnsProxy) writeResponse(w dns.ResponseWriter, response *dns.Msg) {
+	if err := w.WriteMsg(response); err != nil {
 		dnsProxy.metrics.incrementWriteResponseErrors()
 		log.Printf("writeResponse error = %v", err)
 	}
 }
 
+func (dnsProxy *dnsProxy) makePrefetchRequest(cacheKey string, question *dns.Question) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	log.Printf("makePrefetchRequest %v", cacheKey)
+
+	dnsProxy.metrics.incrementPrefetchRequests()
+
+	request := new(dns.Msg)
+	request.Question = append(request.Question, *question)
+
+	responseMsg, err := dnsProxy.dohClient.makeRequest(ctx, request)
+	if err != nil {
+		dnsProxy.metrics.incrementDOHClientErrors()
+		log.Printf("makeHttpRequest error: %v", err)
+		return
+	}
+
+	dnsProxy.clampTTLAndCacheResponse(cacheKey, responseMsg)
+}
+
 func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 
-	return func(w dns.ResponseWriter, r *dns.Msg) {
+	return func(w dns.ResponseWriter, request *dns.Msg) {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		requestID := r.Id
-		cacheKey := getCacheKey(r)
+		if len(request.Question) != 1 {
+			log.Printf("bad request.Question length %v request %v", len(request.Question), request)
+			dns.HandleFailed(w, request)
+			return
+		}
+
+		requestID := request.Id
+		question := &(request.Question[0])
+		cacheKey := getCacheKey(question)
 
 		if cacheMessageCopy := dnsProxy.getCachedMessageCopyForHit(cacheKey); cacheMessageCopy != nil {
 			dnsProxy.metrics.incrementCacheHits()
@@ -174,17 +214,20 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		}
 
 		dnsProxy.metrics.incrementCacheMisses()
-		r.Id = 0
-		responseMsg, err := dnsProxy.dohClient.makeRequest(ctx, r)
+		request.Id = 0
+		responseMsg, err := dnsProxy.dohClient.makeRequest(ctx, request)
 		if err != nil {
 			dnsProxy.metrics.incrementDOHClientErrors()
 			log.Printf("makeHttpRequest error: %v", err)
-			r.Id = requestID
-			dns.HandleFailed(w, r)
+			request.Id = requestID
+			dns.HandleFailed(w, request)
 			return
 		}
 
+		dnsProxy.addToPrefetch(cacheKey, question, responseMsg)
+
 		dnsProxy.clampTTLAndCacheResponse(cacheKey, responseMsg)
+
 		responseMsg.Id = requestID
 		dnsProxy.writeResponse(w, responseMsg)
 	}
@@ -317,8 +360,8 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 
 		cacheItemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.CacheConfiguration.MaxPurgesPerTimerPop)
 
-		log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v",
-			dnsProxy.metrics, dnsProxy.cache.len(), cacheItemsPurged)
+		log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v prefetch len = %v",
+			dnsProxy.metrics, dnsProxy.cache.len(), cacheItemsPurged, dnsProxy.prefetch.len())
 	}
 }
 
@@ -331,4 +374,6 @@ func (dnsProxy *dnsProxy) Start() {
 	go dnsProxy.runServer(listenAddressAndPort, "udp", serveMux)
 
 	go dnsProxy.runPeriodicTimer()
+
+	dnsProxy.prefetch.start(dnsProxy)
 }

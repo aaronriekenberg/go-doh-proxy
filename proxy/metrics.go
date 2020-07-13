@@ -29,6 +29,7 @@ func (metricValue *metricValue) loadCount() uint64 {
 type metrics struct {
 	cacheHitsValue           metricValue
 	cacheMissesValue         metricValue
+	prefetchRequestsValue    metricValue
 	dohClientErrorsValue     metricValue
 	writeResponseErrorsValue metricValue
 	rcodeMetricsMap          sync.Map
@@ -53,6 +54,14 @@ func (metrics *metrics) incrementCacheMisses() {
 
 func (metrics *metrics) cacheMisses() uint64 {
 	return metrics.cacheMissesValue.loadCount()
+}
+
+func (metrics *metrics) incrementPrefetchRequests() {
+	metrics.prefetchRequestsValue.incrementCount()
+}
+
+func (metrics *metrics) prefetchRequests() uint64 {
+	return metrics.prefetchRequestsValue.loadCount()
 }
 
 func (metrics *metrics) incrementDOHClientErrors() {
@@ -130,7 +139,8 @@ func (metrics *metrics) rrTypeMetricsMapSnapshot() map[dns.Type]uint64 {
 }
 
 func (metrics *metrics) String() string {
-	return fmt.Sprintf("cacheHits = %v cacheMisses = %v dohClientErrors = %v writeResponseErrors = %v rcodeMetrics = %v rrtypeMetrics = %v",
-		metrics.cacheHits(), metrics.cacheMisses(), metrics.dohClientErrors(), metrics.writeResponseErrors(),
+	return fmt.Sprintf("cacheHits = %v cacheMisses = %v prefetchRequests = %v dohClientErrors = %v writeResponseErrors = %v rcodeMetrics = %v rrtypeMetrics = %v",
+		metrics.cacheHits(), metrics.cacheMisses(), metrics.prefetchRequests(),
+		metrics.dohClientErrors(), metrics.writeResponseErrors(),
 		metrics.rcodeMetricsMapSnapshot(), metrics.rrTypeMetricsMapSnapshot())
 }

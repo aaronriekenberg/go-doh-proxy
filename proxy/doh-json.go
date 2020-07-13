@@ -42,7 +42,10 @@ func (dohJSONConverter *dohJSONConverter) decodeJSONResponse(request *dns.Msg, j
 	}
 
 	resp = new(dns.Msg)
-	resp.SetReply(request)
+
+	if request != nil {
+		resp.SetReply(request)
+	}
 
 	resp.Rcode = dohJSONResponse.Status
 	dohJSONConverter.metrics.recordRcodeMetric(dohJSONResponse.Status)
@@ -95,7 +98,7 @@ func (dohJSONConverter *dohJSONConverter) decodeJSONResponse(request *dns.Msg, j
 			})
 
 		default:
-			log.Printf("unknown json rrType request = %v rrType = %v", request, rrType)
+			log.Printf("unknown json rrType = %v", rrType)
 		}
 	}
 
