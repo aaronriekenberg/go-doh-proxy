@@ -152,8 +152,6 @@ func (dnsProxy *dnsProxy) clampTTLAndCacheResponse(cacheKey string, resp *dns.Ms
 }
 
 func (dnsProxy *dnsProxy) addToPrefetch(cacheKey string, question *dns.Question, response *dns.Msg) {
-	log.Printf("addToPrefetch rcode = %v", response.Rcode)
-
 	if response.Rcode != dns.RcodeSuccess {
 		return
 	}
