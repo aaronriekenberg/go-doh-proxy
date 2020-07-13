@@ -32,7 +32,7 @@ func NewDNSProxy(configuration *Configuration) DNSProxy {
 		metrics:       metrics,
 		dohClient:     newDOHClient(configuration.DOHClientConfiguration, newDOHJSONConverter(metrics)),
 		cache:         newCache(configuration.CacheConfiguration.MaxSize),
-		prefetch:      newPrefetch(),
+		prefetch:      newPrefetch(configuration.PrefetchConfiguration),
 	}
 }
 
@@ -203,6 +203,8 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 		cacheKey := getCacheKey(question)
 
 		if cacheMessageCopy := dnsProxy.getCachedMessageCopyForHit(cacheKey); cacheMessageCopy != nil {
+			dnsProxy.addToPrefetch(cacheKey, question, cacheMessageCopy)
+
 			dnsProxy.metrics.incrementCacheHits()
 			cacheMessageCopy.Id = requestID
 			dnsProxy.writeResponse(w, cacheMessageCopy)

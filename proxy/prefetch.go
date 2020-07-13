@@ -8,55 +8,54 @@ import (
 	"github.com/miekg/dns"
 )
 
-const prefetchWorkers = 2
-const sleepIntervalMinutes = 5
+type prefetchCacheEntry struct {
+	question       dns.Question
+	expirationTime time.Time
+}
+
+func (prefetchCacheEntry *prefetchCacheEntry) expired(now time.Time) bool {
+	return now.After(prefetchCacheEntry.expirationTime)
+}
 
 type prefetchRequest struct {
 	cacheKey string
-	question *dns.Question
+	question dns.Question
 }
 
 type prefetch struct {
-	dnsProxy              *dnsProxy
 	cacheKeyToQuestion    *lru.Cache
 	prefetchRequstChannel chan *prefetchRequest
+	numWorkers            int
 	sleepInterval         time.Duration
+	maxCacheEntryAge      time.Duration
 }
 
-func newPrefetch() *prefetch {
-	cacheKeyToQuestion, err := lru.New(10000)
+func newPrefetch(prefetchConfiguration PrefetchConfiguration) *prefetch {
+	cacheKeyToQuestion, err := lru.New(prefetchConfiguration.MaxCacheSize)
 	if err != nil {
 		log.Fatalf("prefetch lru.New error %v", err)
 	}
 
 	return &prefetch{
 		cacheKeyToQuestion:    cacheKeyToQuestion,
-		prefetchRequstChannel: make(chan *prefetchRequest, prefetchWorkers),
-		sleepInterval:         time.Duration(sleepIntervalMinutes) * time.Minute,
+		prefetchRequstChannel: make(chan *prefetchRequest, prefetchConfiguration.NumWorkers),
+		numWorkers:            prefetchConfiguration.NumWorkers,
+		sleepInterval:         time.Duration(prefetchConfiguration.SleepIntervalSeconds) * time.Second,
+		maxCacheEntryAge:      time.Duration(prefetchConfiguration.MaxCacheEntryAgeSeconds) * time.Second,
 	}
 }
 
 func (prefetch *prefetch) addToPrefetch(cacheKey string, question *dns.Question) {
-	questionCopy := *question
-	prefetch.cacheKeyToQuestion.Add(cacheKey, &questionCopy)
-}
-
-func (prefetch *prefetch) prefetchRequestTask(workerNumber int) {
-	log.Printf("prefetchRequestTask workerNumber = %v", workerNumber)
-
-	for {
-		prefetchRequest := <-prefetch.prefetchRequstChannel
-
-		prefetch.dnsProxy.makePrefetchRequest(prefetchRequest.cacheKey, prefetchRequest.question)
-	}
+	prefetch.cacheKeyToQuestion.Add(cacheKey, &prefetchCacheEntry{
+		question:       *question,
+		expirationTime: time.Now().Add(prefetch.maxCacheEntryAge),
+	})
 }
 
 func (prefetch *prefetch) runPeriodicPrefetch() {
 	log.Printf("runPeriodicPrefetch sleepInterval %v", prefetch.sleepInterval)
 
 	for {
-		log.Printf("runPeriodicPrefetch before sleep")
-
 		time.Sleep(prefetch.sleepInterval)
 
 		log.Printf("runPeriodicPrefetch after sleep")
@@ -64,17 +63,38 @@ func (prefetch *prefetch) runPeriodicPrefetch() {
 		keys := prefetch.cacheKeyToQuestion.Keys()
 		log.Printf("runPeriodicPrefetch keys length = %v", len(keys))
 
+		now := time.Now()
+		expiredPrefetchCacheEntries := 0
+
 		for _, key := range keys {
 			cacheKey := key.(string)
 			value, ok := prefetch.cacheKeyToQuestion.Get(cacheKey)
 			if ok {
-				question := value.(*dns.Question)
-				prefetch.prefetchRequstChannel <- &prefetchRequest{
-					cacheKey: cacheKey,
-					question: question,
+				entry := value.(*prefetchCacheEntry)
+
+				if entry.expired(now) {
+					prefetch.cacheKeyToQuestion.Remove(cacheKey)
+					expiredPrefetchCacheEntries++
+				} else {
+					prefetch.prefetchRequstChannel <- &prefetchRequest{
+						cacheKey: cacheKey,
+						question: entry.question,
+					}
 				}
 			}
 		}
+
+		log.Printf("runPeriodicPrefetch before sleep expiredPrefetchCacheEntries = %v", expiredPrefetchCacheEntries)
+	}
+}
+
+func runPrefetchRequestTask(workerNumber int, prefetchRequstChannel chan *prefetchRequest, dnsProxy *dnsProxy) {
+	log.Printf("prefetchRequestTask workerNumber = %v", workerNumber)
+
+	for {
+		prefetchRequest := <-prefetchRequstChannel
+
+		dnsProxy.makePrefetchRequest(prefetchRequest.cacheKey, &prefetchRequest.question)
 	}
 }
 
@@ -85,10 +105,8 @@ func (prefetch *prefetch) len() int {
 func (prefetch *prefetch) start(dnsProxy *dnsProxy) {
 	log.Printf("prefetch.start")
 
-	prefetch.dnsProxy = dnsProxy
-
-	for i := 0; i < prefetchWorkers; i++ {
-		go prefetch.prefetchRequestTask(i)
+	for i := 0; i < prefetch.numWorkers; i++ {
+		go runPrefetchRequestTask(i, prefetch.prefetchRequstChannel, dnsProxy)
 	}
 
 	go prefetch.runPeriodicPrefetch()

@@ -65,6 +65,13 @@ type CacheConfiguration struct {
 	MaxPurgesPerTimerPop int `json:"maxPurgesPerTimerPop"`
 }
 
+type PrefetchConfiguration struct {
+	MaxCacheSize            int `json:"maxCacheSize"`
+	NumWorkers              int `json:"numWorkers"`
+	SleepIntervalSeconds    int `json:"sleepIntervalSeconds"`
+	MaxCacheEntryAgeSeconds int `json:"maxCacheEntryAgeSeconds"`
+}
+
 // Configuration is the DNS proxy configuration.
 type Configuration struct {
 	ListenAddress               HostAndPort                  `json:"listenAddress"`
@@ -73,6 +80,7 @@ type Configuration struct {
 	DOHClientConfiguration      DOHClientConfiguration       `json:"dohClientConfiguration"`
 	ProxyConfiguration          ProxyConfiguration           `json:"proxyConfiguration"`
 	CacheConfiguration          CacheConfiguration           `json:"cacheConfiguration"`
+	PrefetchConfiguration       PrefetchConfiguration        `json:"PrefetchConfiguration"`
 	TimerIntervalSeconds        int                          `json:"timerIntervalSeconds"`
 }
 

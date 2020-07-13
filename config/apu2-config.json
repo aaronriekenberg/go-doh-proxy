@@ -49,5 +49,11 @@
     "maxSize": 20000,
     "maxPurgesPerTimerPop": 100
   },
+  "prefetchConfiguration": {
+    "maxCacheSize": 10000,
+    "numWorkers": 2,
+    "sleepIntervalSeconds": 300,
+    "maxCacheEntryAgeSeconds": 3600
+  },
   "timerIntervalSeconds": 60
 }
