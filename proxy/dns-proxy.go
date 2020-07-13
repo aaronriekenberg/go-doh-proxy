@@ -358,7 +358,7 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 
 		cacheItemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.CacheConfiguration.MaxPurgesPerTimerPop)
 
-		log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v prefetch len = %v",
+		log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v prefetch.len = %v",
 			dnsProxy.metrics, dnsProxy.cache.len(), cacheItemsPurged, dnsProxy.prefetch.len())
 	}
 }
