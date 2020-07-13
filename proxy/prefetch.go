@@ -8,6 +8,8 @@ import (
 	"github.com/miekg/dns"
 )
 
+const prefetchWorkers = 10
+
 type prefetchRequest struct {
 	cacheKey string
 	question *dns.Question
@@ -28,7 +30,7 @@ func newPrefetch() *prefetch {
 
 	return &prefetch{
 		cacheKeyToQuestion:    cacheKeyToQuestion,
-		prefetchRequstChannel: make(chan *prefetchRequest, 10),
+		prefetchRequstChannel: make(chan *prefetchRequest, prefetchWorkers),
 		sleepInterval:         time.Duration(15) * time.Minute,
 	}
 }
@@ -38,8 +40,8 @@ func (prefetch *prefetch) addToPrefetch(cacheKey string, question *dns.Question)
 	prefetch.cacheKeyToQuestion.Add(cacheKey, &questionCopy)
 }
 
-func (prefetch *prefetch) prefetchRequestTask() {
-	log.Printf("prefetchRequestTask")
+func (prefetch *prefetch) prefetchRequestTask(workerNumber int) {
+	log.Printf("prefetchRequestTask workerNumber = %v", workerNumber)
 
 	for {
 		prefetchRequest := <-prefetch.prefetchRequstChannel
@@ -84,6 +86,9 @@ func (prefetch *prefetch) start(dnsProxy *dnsProxy) {
 
 	prefetch.dnsProxy = dnsProxy
 
-	go prefetch.prefetchRequestTask()
+	for i := 0; i < prefetchWorkers; i++ {
+		go prefetch.prefetchRequestTask(i)
+	}
+
 	go prefetch.runPeriodicPrefetch()
 }
