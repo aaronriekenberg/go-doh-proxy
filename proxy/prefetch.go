@@ -8,7 +8,8 @@ import (
 	"github.com/miekg/dns"
 )
 
-const prefetchWorkers = 10
+const prefetchWorkers = 2
+const sleepIntervalMinutes = 5
 
 type prefetchRequest struct {
 	cacheKey string
@@ -31,7 +32,7 @@ func newPrefetch() *prefetch {
 	return &prefetch{
 		cacheKeyToQuestion:    cacheKeyToQuestion,
 		prefetchRequstChannel: make(chan *prefetchRequest, prefetchWorkers),
-		sleepInterval:         time.Duration(15) * time.Minute,
+		sleepInterval:         time.Duration(sleepIntervalMinutes) * time.Minute,
 	}
 }
 
