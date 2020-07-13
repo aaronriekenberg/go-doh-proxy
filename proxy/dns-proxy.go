@@ -170,8 +170,6 @@ func (dnsProxy *dnsProxy) makePrefetchRequest(cacheKey string, question *dns.Que
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Printf("makePrefetchRequest %v", cacheKey)
-
 	dnsProxy.metrics.incrementPrefetchRequests()
 
 	request := new(dns.Msg)
