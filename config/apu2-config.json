@@ -24,6 +24,9 @@
     },
     {
       "domain": "target.com.target.com."
+    },
+    {
+      "domain": "_udp.target.com."
     }
   ],
   "forwardDomainConfigurations": [
