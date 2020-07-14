@@ -27,6 +27,9 @@
     },
     {
       "domain": "_udp.target.com."
+    },
+    {
+      "domain": "googlesyndication.com."
     }
   ],
   "forwardDomainConfigurations": [
