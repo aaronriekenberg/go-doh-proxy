@@ -3,6 +3,29 @@
     "host": "192.168.1.1",
     "port": "10053"
   },
+  "blockedDomainConfigurations": [
+    {
+      "domain": "corp.target.com."
+    },
+    {
+      "domain": "dist.target.com."
+    },
+    {
+      "domain": "labs.target.com."
+    },
+    {
+      "domain": "hq.target.com."
+    },
+    {
+      "domain": "prod.target.com."
+    },
+    {
+      "domain": "stores.target.com."
+    },
+    {
+      "domain": "target.com.target.com."
+    }
+  ],
   "forwardDomainConfigurations": [
     {
       "domain": "domain.",

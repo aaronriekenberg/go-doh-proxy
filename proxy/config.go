@@ -8,6 +8,11 @@ import (
 	"net"
 )
 
+// BlockedDomainConfiguration is the configuration for a blocked domain.
+type BlockedDomainConfiguration struct {
+	Domain string `json:"domain"`
+}
+
 // HostAndPort is a host and port.
 type HostAndPort struct {
 	Host string `json:"host"`
@@ -75,6 +80,7 @@ type PrefetchConfiguration struct {
 // Configuration is the DNS proxy configuration.
 type Configuration struct {
 	ListenAddress               HostAndPort                  `json:"listenAddress"`
+	BlockedDomainConfigurations []BlockedDomainConfiguration `json:"blockedDomainConfigurations"`
 	ForwardDomainConfigurations []ForwardDomainConfiguration `json:"forwardDomainConfigurations"`
 	ReverseDomainConfigurations []ReverseDomainConfiguration `json:"reverseDomainConfigurations"`
 	DOHClientConfiguration      DOHClientConfiguration       `json:"dohClientConfiguration"`

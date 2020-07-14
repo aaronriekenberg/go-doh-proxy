@@ -27,6 +27,7 @@ func (metricValue *metricValue) loadCount() uint64 {
 }
 
 type metrics struct {
+	blockedValue             metricValue
 	cacheHitsValue           metricValue
 	cacheMissesValue         metricValue
 	prefetchRequestsValue    metricValue
@@ -38,6 +39,14 @@ type metrics struct {
 
 func newMetrics() *metrics {
 	return &metrics{}
+}
+
+func (metrics *metrics) incrementBlocked() {
+	metrics.blockedValue.incrementCount()
+}
+
+func (metrics *metrics) blocked() uint64 {
+	return metrics.blockedValue.loadCount()
 }
 
 func (metrics *metrics) incrementCacheHits() {
@@ -139,8 +148,9 @@ func (metrics *metrics) rrTypeMetricsMapSnapshot() map[dns.Type]uint64 {
 }
 
 func (metrics *metrics) String() string {
-	return fmt.Sprintf("cacheHits = %v cacheMisses = %v prefetchRequests = %v dohClientErrors = %v writeResponseErrors = %v rcodeMetrics = %v rrtypeMetrics = %v",
-		metrics.cacheHits(), metrics.cacheMisses(), metrics.prefetchRequests(),
+	return fmt.Sprintf(
+		"blocked = %v cacheHits = %v cacheMisses = %v prefetchRequests = %v dohClientErrors = %v writeResponseErrors = %v rcodeMetrics = %v rrtypeMetrics = %v",
+		metrics.blocked(), metrics.cacheHits(), metrics.cacheMisses(), metrics.prefetchRequests(),
 		metrics.dohClientErrors(), metrics.writeResponseErrors(),
 		metrics.rcodeMetricsMapSnapshot(), metrics.rrTypeMetricsMapSnapshot())
 }

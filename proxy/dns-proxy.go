@@ -231,6 +231,16 @@ func (dnsProxy *dnsProxy) createProxyHandlerFunc() dns.HandlerFunc {
 	}
 }
 
+func (dnsProxy *dnsProxy) createBlockedDomainHandlerFunc() dns.HandlerFunc {
+	return func(w dns.ResponseWriter, r *dns.Msg) {
+		dnsProxy.metrics.incrementBlocked()
+
+		responseMsg := new(dns.Msg)
+		responseMsg.SetRcode(r, dns.RcodeNameError)
+		dnsProxy.writeResponse(w, responseMsg)
+	}
+}
+
 func (dnsProxy *dnsProxy) createForwardDomainHandlerFunc(forwardDomainConfiguration ForwardDomainConfiguration) dns.HandlerFunc {
 	forwardNamesToAddresses := make(map[string]net.IP)
 	for _, forwardNameToAddress := range forwardDomainConfiguration.NamesToAddresses {
@@ -325,6 +335,10 @@ func (dnsProxy *dnsProxy) createServeMux() *dns.ServeMux {
 	dnsServeMux := dns.NewServeMux()
 
 	dnsServeMux.HandleFunc(".", dnsProxy.createProxyHandlerFunc())
+
+	for _, blockedDomainConfiguration := range dnsProxy.configuration.BlockedDomainConfigurations {
+		dnsServeMux.HandleFunc(blockedDomainConfiguration.Domain, dnsProxy.createBlockedDomainHandlerFunc())
+	}
 
 	for _, forwardDomainConfiguration := range dnsProxy.configuration.ForwardDomainConfigurations {
 		dnsServeMux.HandleFunc(forwardDomainConfiguration.Domain, dnsProxy.createForwardDomainHandlerFunc(forwardDomainConfiguration))
