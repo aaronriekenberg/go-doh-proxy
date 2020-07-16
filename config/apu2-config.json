@@ -84,5 +84,9 @@
     "sleepIntervalSeconds": 300,
     "maxCacheEntryAgeSeconds": 3600
   },
-  "timerIntervalSeconds": 60
+  "timerIntervalSeconds": 60,
+  "pprofConfiguration": {
+    "enabled": true,
+    "listenAddress": "192.168.1.1:10054"
+  }
 }

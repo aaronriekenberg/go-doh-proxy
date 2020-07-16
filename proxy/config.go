@@ -77,6 +77,11 @@ type PrefetchConfiguration struct {
 	MaxCacheEntryAgeSeconds int `json:"maxCacheEntryAgeSeconds"`
 }
 
+type PprofConfiguration struct {
+	Enabled       bool   `json:"enabled"`
+	ListenAddress string `json:"listenAddress"`
+}
+
 // Configuration is the DNS proxy configuration.
 type Configuration struct {
 	ListenAddress               HostAndPort                  `json:"listenAddress"`
@@ -88,6 +93,7 @@ type Configuration struct {
 	CacheConfiguration          CacheConfiguration           `json:"cacheConfiguration"`
 	PrefetchConfiguration       PrefetchConfiguration        `json:"PrefetchConfiguration"`
 	TimerIntervalSeconds        int                          `json:"timerIntervalSeconds"`
+	PprofConfiguration          PprofConfiguration           `json:"pprofConfiguration"`
 }
 
 // ReadConfiguration reads the DNS proxy configuration from a json file.

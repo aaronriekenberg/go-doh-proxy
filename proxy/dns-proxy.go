@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"net"
+	"net/http"
+	"net/http/pprof"
 	"strings"
 	"time"
 
@@ -377,7 +379,25 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 	}
 }
 
+func (dnsProxy *dnsProxy) startPprof() {
+	if dnsProxy.configuration.PprofConfiguration.Enabled {
+		log.Printf("startPprof starting server")
+
+		serveMux := http.NewServeMux()
+
+		serveMux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+		serveMux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+		serveMux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+		serveMux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+		serveMux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+
+		go log.Fatalf("http.ListenAndServe error: %v", http.ListenAndServe(dnsProxy.configuration.PprofConfiguration.ListenAddress, serveMux))
+	}
+}
+
 func (dnsProxy *dnsProxy) Start() {
+	log.Printf("begin dnsProxy.Start")
+
 	listenAddressAndPort := dnsProxy.configuration.ListenAddress.joinHostPort()
 
 	serveMux := dnsProxy.createServeMux()
@@ -388,4 +408,8 @@ func (dnsProxy *dnsProxy) Start() {
 	go dnsProxy.runPeriodicTimer()
 
 	dnsProxy.prefetch.start(dnsProxy)
+
+	dnsProxy.startPprof()
+
+	log.Printf("end dnsProxy.Start")
 }
