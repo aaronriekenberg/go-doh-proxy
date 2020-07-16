@@ -70,6 +70,7 @@ type CacheConfiguration struct {
 	MaxPurgesPerTimerPop int `json:"maxPurgesPerTimerPop"`
 }
 
+// PrefetchConfiguration is the prefetch configuration.
 type PrefetchConfiguration struct {
 	MaxCacheSize            int `json:"maxCacheSize"`
 	NumWorkers              int `json:"numWorkers"`
@@ -77,6 +78,7 @@ type PrefetchConfiguration struct {
 	MaxCacheEntryAgeSeconds int `json:"maxCacheEntryAgeSeconds"`
 }
 
+// PprofConfiguration is the pprof configuration.
 type PprofConfiguration struct {
 	Enabled       bool   `json:"enabled"`
 	ListenAddress string `json:"listenAddress"`
