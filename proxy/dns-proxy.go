@@ -391,7 +391,9 @@ func (dnsProxy *dnsProxy) startPprof() {
 		serveMux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
 		serveMux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
-		go log.Fatalf("http.ListenAndServe error: %v", http.ListenAndServe(dnsProxy.configuration.PprofConfiguration.ListenAddress, serveMux))
+		go func() {
+			log.Fatalf("http.ListenAndServe error: %v", http.ListenAndServe(dnsProxy.configuration.PprofConfiguration.ListenAddress, serveMux))
+		}()
 	}
 }
 
