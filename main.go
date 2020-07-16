@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/aaronriekenberg/go-doh-proxy/proxy"
@@ -22,7 +23,7 @@ func awaitShutdownSignal() {
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 
-	log.Printf("gitCommit: %v", gitCommit)
+	log.Printf("gitCommit: %q GOMAXPROCS=%v go version: %q", gitCommit, runtime.GOMAXPROCS(0), runtime.Version())
 
 	if len(os.Args) != 2 {
 		log.Fatalf("Usage: %v <config json file>", os.Args[0])
