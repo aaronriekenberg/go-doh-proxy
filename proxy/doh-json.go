@@ -42,10 +42,7 @@ func (dohJSONConverter *dohJSONConverter) decodeJSONResponse(request *dns.Msg, j
 	}
 
 	resp = new(dns.Msg)
-
-	if request != nil {
-		resp.SetReply(request)
-	}
+	resp.SetReply(request)
 
 	resp.Rcode = dohJSONResponse.Status
 	dohJSONConverter.metrics.recordRcodeMetric(dohJSONResponse.Status)
