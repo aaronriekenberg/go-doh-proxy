@@ -80,7 +80,7 @@
   },
   "prefetchConfiguration": {
     "maxCacheSize": 10000,
-    "numWorkers": 1,
+    "numWorkers": 2,
     "sleepIntervalSeconds": 300,
     "maxCacheEntryAgeSeconds": 3600
   },
