@@ -381,7 +381,7 @@ func (dnsProxy *dnsProxy) runPeriodicTimer() {
 
 func (dnsProxy *dnsProxy) startPprof() {
 	if dnsProxy.configuration.PprofConfiguration.Enabled {
-		log.Printf("startPprof starting server")
+		log.Printf("startPprof starting server on %v", dnsProxy.configuration.PprofConfiguration.ListenAddress)
 
 		serveMux := http.NewServeMux()
 
