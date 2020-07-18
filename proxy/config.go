@@ -58,8 +58,8 @@ type DOHClientConfiguration struct {
 	RequestTimeoutMilliseconds          int    `json:"requestTimeoutMilliseconds"`
 }
 
-// ProxyConfiguration is the proxy configuration.
-type ProxyConfiguration struct {
+// DNSProxyConfiguration is the proxy configuration.
+type DNSProxyConfiguration struct {
 	ClampMinTTLSeconds uint32 `json:"clampMinTTLSeconds"`
 	ClampMaxTTLSeconds uint32 `json:"clampMaxTTLSeconds"`
 }
@@ -91,7 +91,7 @@ type Configuration struct {
 	ForwardDomainConfigurations []ForwardDomainConfiguration `json:"forwardDomainConfigurations"`
 	ReverseDomainConfigurations []ReverseDomainConfiguration `json:"reverseDomainConfigurations"`
 	DOHClientConfiguration      DOHClientConfiguration       `json:"dohClientConfiguration"`
-	ProxyConfiguration          ProxyConfiguration           `json:"proxyConfiguration"`
+	DNSProxyConfiguration       DNSProxyConfiguration        `json:"dnsProxyConfiguration"`
 	CacheConfiguration          CacheConfiguration           `json:"cacheConfiguration"`
 	PrefetchConfiguration       PrefetchConfiguration        `json:"PrefetchConfiguration"`
 	TimerIntervalSeconds        int                          `json:"timerIntervalSeconds"`

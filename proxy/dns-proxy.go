@@ -39,8 +39,8 @@ func NewDNSProxy(configuration *Configuration) DNSProxy {
 }
 
 func (dnsProxy *dnsProxy) clampAndGetMinTTLSeconds(m *dns.Msg) uint32 {
-	clampMinTTLSeconds := dnsProxy.configuration.ProxyConfiguration.ClampMinTTLSeconds
-	clampMaxTTLSeconds := dnsProxy.configuration.ProxyConfiguration.ClampMaxTTLSeconds
+	clampMinTTLSeconds := dnsProxy.configuration.DNSProxyConfiguration.ClampMinTTLSeconds
+	clampMaxTTLSeconds := dnsProxy.configuration.DNSProxyConfiguration.ClampMaxTTLSeconds
 
 	foundRRHeaderTTL := false
 	rrHeaderMinTTLSeconds := clampMinTTLSeconds
