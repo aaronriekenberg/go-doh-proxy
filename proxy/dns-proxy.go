@@ -4,8 +4,6 @@ import (
 	"context"
 	"log"
 	"net"
-	"net/http"
-	"net/http/pprof"
 	"strings"
 	"time"
 
@@ -20,6 +18,7 @@ type DNSProxy interface {
 type dnsProxy struct {
 	configuration *Configuration
 	metrics       *metrics
+	dnsServer     *dnsServer
 	dohClient     *dohClient
 	cache         *cache
 	prefetch      *prefetch
@@ -27,14 +26,15 @@ type dnsProxy struct {
 
 // NewDNSProxy creates a DNS proxy.
 func NewDNSProxy(configuration *Configuration) DNSProxy {
-	metrics := newMetrics()
+	metrics := newMetrics(&configuration.MetricsConfiguration)
 
 	return &dnsProxy{
 		configuration: configuration,
 		metrics:       metrics,
+		dnsServer:     newDNSServer(&configuration.DNSServerConfiguration),
 		dohClient:     newDOHClient(configuration.DOHClientConfiguration, newDOHJSONConverter(metrics)),
-		cache:         newCache(configuration.CacheConfiguration.MaxSize),
-		prefetch:      newPrefetch(configuration.PrefetchConfiguration),
+		cache:         newCache(&configuration.CacheConfiguration),
+		prefetch:      newPrefetch(&configuration.PrefetchConfiguration),
 	}
 }
 
@@ -338,80 +338,35 @@ func (dnsProxy *dnsProxy) createServeMux() *dns.ServeMux {
 
 	dnsServeMux.HandleFunc(".", dnsProxy.createProxyHandlerFunc())
 
-	for _, blockedDomainConfiguration := range dnsProxy.configuration.BlockedDomainConfigurations {
+	dnsProxyConfiguration := &dnsProxy.configuration.DNSProxyConfiguration
+
+	for _, blockedDomainConfiguration := range dnsProxyConfiguration.BlockedDomainConfigurations {
 		dnsServeMux.HandleFunc(blockedDomainConfiguration.Domain, dnsProxy.createBlockedDomainHandlerFunc())
 	}
 
-	for _, forwardDomainConfiguration := range dnsProxy.configuration.ForwardDomainConfigurations {
+	for _, forwardDomainConfiguration := range dnsProxyConfiguration.ForwardDomainConfigurations {
 		dnsServeMux.HandleFunc(forwardDomainConfiguration.Domain, dnsProxy.createForwardDomainHandlerFunc(forwardDomainConfiguration))
 	}
 
-	for _, reverseDomainConfiguration := range dnsProxy.configuration.ReverseDomainConfigurations {
+	for _, reverseDomainConfiguration := range dnsProxyConfiguration.ReverseDomainConfigurations {
 		dnsServeMux.HandleFunc(reverseDomainConfiguration.Domain, dnsProxy.createReverseHandlerFunc(reverseDomainConfiguration))
 	}
 
 	return dnsServeMux
 }
 
-func (dnsProxy *dnsProxy) runServer(listenAddrAndPort, net string, serveMux *dns.ServeMux) {
-	srv := &dns.Server{
-		Handler: serveMux,
-		Addr:    listenAddrAndPort,
-		Net:     net,
-	}
-
-	log.Printf("starting %v server on %v", net, listenAddrAndPort)
-
-	err := srv.ListenAndServe()
-	log.Fatalf("ListenAndServe error for net %s: %v", net, err)
-}
-
-func (dnsProxy *dnsProxy) runPeriodicTimer() {
-	ticker := time.NewTicker(time.Second * time.Duration(dnsProxy.configuration.TimerIntervalSeconds))
-
-	for {
-		<-ticker.C
-
-		cacheItemsPurged := dnsProxy.cache.periodicPurge(dnsProxy.configuration.CacheConfiguration.MaxPurgesPerTimerPop)
-
-		log.Printf("timerPop metrics: %v cache.len = %v cacheItemsPurged = %v prefetch.len = %v",
-			dnsProxy.metrics, dnsProxy.cache.len(), cacheItemsPurged, dnsProxy.prefetch.len())
-	}
-}
-
-func (dnsProxy *dnsProxy) startPprof() {
-	if dnsProxy.configuration.PprofConfiguration.Enabled {
-		log.Printf("startPprof starting server on %v", dnsProxy.configuration.PprofConfiguration.ListenAddress)
-
-		serveMux := http.NewServeMux()
-
-		serveMux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
-		serveMux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
-		serveMux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-		serveMux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-		serveMux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
-
-		go func() {
-			log.Fatalf("http.ListenAndServe error: %v", http.ListenAndServe(dnsProxy.configuration.PprofConfiguration.ListenAddress, serveMux))
-		}()
-	}
-}
-
 func (dnsProxy *dnsProxy) Start() {
 	log.Printf("begin dnsProxy.Start")
 
-	listenAddressAndPort := dnsProxy.configuration.ListenAddress.joinHostPort()
+	dnsProxy.metrics.start()
 
-	serveMux := dnsProxy.createServeMux()
+	dnsProxy.dnsServer.start(dnsProxy.createServeMux())
 
-	go dnsProxy.runServer(listenAddressAndPort, "tcp", serveMux)
-	go dnsProxy.runServer(listenAddressAndPort, "udp", serveMux)
-
-	go dnsProxy.runPeriodicTimer()
+	dnsProxy.cache.start()
 
 	dnsProxy.prefetch.start(dnsProxy)
 
-	dnsProxy.startPprof()
+	startPprof(&dnsProxy.configuration.PprofConfiguration)
 
 	log.Printf("end dnsProxy.Start")
 }

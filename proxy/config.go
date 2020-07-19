@@ -8,6 +8,16 @@ import (
 	"net"
 )
 
+// MetricsConfiguration is the metrics configuration.
+type MetricsConfiguration struct {
+	TimerIntervalSeconds int `json:"timerIntervalSeconds"`
+}
+
+// DNSServerConfiguration is the DNS server configuration.
+type DNSServerConfiguration struct {
+	ListenAddress HostAndPort `json:"listenAddress"`
+}
+
 // BlockedDomainConfiguration is the configuration for a blocked domain.
 type BlockedDomainConfiguration struct {
 	Domain string `json:"domain"`
@@ -50,6 +60,15 @@ type ReverseDomainConfiguration struct {
 	ResponseTTLSeconds uint32                 `json:"responseTTLSeconds"`
 }
 
+// DNSProxyConfiguration is the proxy configuration.
+type DNSProxyConfiguration struct {
+	BlockedDomainConfigurations []BlockedDomainConfiguration `json:"blockedDomainConfigurations"`
+	ForwardDomainConfigurations []ForwardDomainConfiguration `json:"forwardDomainConfigurations"`
+	ReverseDomainConfigurations []ReverseDomainConfiguration `json:"reverseDomainConfigurations"`
+	ClampMinTTLSeconds          uint32                       `json:"clampMinTTLSeconds"`
+	ClampMaxTTLSeconds          uint32                       `json:"clampMaxTTLSeconds"`
+}
+
 // DOHClientConfiguration is the DOH client configuration
 type DOHClientConfiguration struct {
 	URL                                 string `json:"url"`
@@ -58,16 +77,11 @@ type DOHClientConfiguration struct {
 	RequestTimeoutMilliseconds          int    `json:"requestTimeoutMilliseconds"`
 }
 
-// DNSProxyConfiguration is the proxy configuration.
-type DNSProxyConfiguration struct {
-	ClampMinTTLSeconds uint32 `json:"clampMinTTLSeconds"`
-	ClampMaxTTLSeconds uint32 `json:"clampMaxTTLSeconds"`
-}
-
 // CacheConfiguration is the cache configuration.
 type CacheConfiguration struct {
 	MaxSize              int `json:"maxSize"`
 	MaxPurgesPerTimerPop int `json:"maxPurgesPerTimerPop"`
+	TimerIntervalSeconds int `json:"timerIntervalSeconds"`
 }
 
 // PrefetchConfiguration is the prefetch configuration.
@@ -86,16 +100,13 @@ type PprofConfiguration struct {
 
 // Configuration is the DNS proxy configuration.
 type Configuration struct {
-	ListenAddress               HostAndPort                  `json:"listenAddress"`
-	BlockedDomainConfigurations []BlockedDomainConfiguration `json:"blockedDomainConfigurations"`
-	ForwardDomainConfigurations []ForwardDomainConfiguration `json:"forwardDomainConfigurations"`
-	ReverseDomainConfigurations []ReverseDomainConfiguration `json:"reverseDomainConfigurations"`
-	DOHClientConfiguration      DOHClientConfiguration       `json:"dohClientConfiguration"`
-	DNSProxyConfiguration       DNSProxyConfiguration        `json:"dnsProxyConfiguration"`
-	CacheConfiguration          CacheConfiguration           `json:"cacheConfiguration"`
-	PrefetchConfiguration       PrefetchConfiguration        `json:"PrefetchConfiguration"`
-	TimerIntervalSeconds        int                          `json:"timerIntervalSeconds"`
-	PprofConfiguration          PprofConfiguration           `json:"pprofConfiguration"`
+	MetricsConfiguration   MetricsConfiguration   `json:"metricsConfiguration"`
+	DNSServerConfiguration DNSServerConfiguration `json:"dnsServerConfiguration"`
+	DOHClientConfiguration DOHClientConfiguration `json:"dohClientConfiguration"`
+	DNSProxyConfiguration  DNSProxyConfiguration  `json:"dnsProxyConfiguration"`
+	CacheConfiguration     CacheConfiguration     `json:"cacheConfiguration"`
+	PrefetchConfiguration  PrefetchConfiguration  `json:"PrefetchConfiguration"`
+	PprofConfiguration     PprofConfiguration     `json:"pprofConfiguration"`
 }
 
 // ReadConfiguration reads the DNS proxy configuration from a json file.

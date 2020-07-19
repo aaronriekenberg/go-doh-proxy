@@ -30,7 +30,7 @@ type prefetch struct {
 	maxCacheEntryAge      time.Duration
 }
 
-func newPrefetch(prefetchConfiguration PrefetchConfiguration) *prefetch {
+func newPrefetch(prefetchConfiguration *PrefetchConfiguration) *prefetch {
 	cacheKeyToQuestion, err := lru.New(prefetchConfiguration.MaxCacheSize)
 	if err != nil {
 		log.Fatalf("prefetch lru.New error %v", err)
@@ -84,29 +84,29 @@ func (prefetch *prefetch) runPeriodicPrefetch() {
 			}
 		}
 
-		log.Printf("runPeriodicPrefetch before sleep expiredPrefetchCacheEntries = %v", expiredPrefetchCacheEntries)
+		log.Printf("runPeriodicPrefetch before sleep cacheKeyToQuestion.Len = %v expiredPrefetchCacheEntries = %v", prefetch.cacheKeyToQuestion.Len(), expiredPrefetchCacheEntries)
 	}
 }
 
-func runPrefetchRequestTask(workerNumber int, prefetchRequstChannel chan *prefetchRequest, dnsProxy *dnsProxy) {
-	log.Printf("prefetchRequestTask workerNumber = %v", workerNumber)
+type prefetchRequestor interface {
+	makePrefetchRequest(cacheKey string, question *dns.Question)
+}
+
+func runPrefetchRequestTask(workerNumber int, prefetchRequstChannel chan *prefetchRequest, prefetchRequestor prefetchRequestor) {
+	log.Printf("runPrefetchRequestTask workerNumber = %v", workerNumber)
 
 	for {
 		prefetchRequest := <-prefetchRequstChannel
 
-		dnsProxy.makePrefetchRequest(prefetchRequest.cacheKey, &prefetchRequest.question)
+		prefetchRequestor.makePrefetchRequest(prefetchRequest.cacheKey, &prefetchRequest.question)
 	}
 }
 
-func (prefetch *prefetch) len() int {
-	return prefetch.cacheKeyToQuestion.Len()
-}
-
-func (prefetch *prefetch) start(dnsProxy *dnsProxy) {
+func (prefetch *prefetch) start(prefetchRequestor prefetchRequestor) {
 	log.Printf("prefetch.start")
 
 	for i := 0; i < prefetch.numWorkers; i++ {
-		go runPrefetchRequestTask(i, prefetch.prefetchRequstChannel, dnsProxy)
+		go runPrefetchRequestTask(i, prefetch.prefetchRequstChannel, prefetchRequestor)
 	}
 
 	go prefetch.runPeriodicPrefetch()

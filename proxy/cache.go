@@ -28,17 +28,19 @@ func (co *cacheObject) durationInCache(now time.Time) time.Duration {
 }
 
 type cache struct {
-	lruCache *lru.Cache
+	configuration *CacheConfiguration
+	lruCache      *lru.Cache
 }
 
-func newCache(maxCacheSize int) *cache {
-	lruCache, err := lru.New(maxCacheSize)
+func newCache(configuration *CacheConfiguration) *cache {
+	lruCache, err := lru.New(configuration.MaxSize)
 	if err != nil {
 		log.Fatalf("error creating cache %v", err)
 	}
 
 	return &cache{
-		lruCache: lruCache,
+		configuration: configuration,
+		lruCache:      lruCache,
 	}
 }
 
@@ -82,4 +84,22 @@ func (cache *cache) periodicPurge(maxPurgeItems int) (itemsPurged int) {
 	}
 
 	return
+}
+
+func (cache *cache) runPeriodicTimer() {
+	ticker := time.NewTicker(time.Duration(cache.configuration.TimerIntervalSeconds) * time.Second)
+
+	for {
+		<-ticker.C
+
+		cacheItemsPurged := cache.periodicPurge(cache.configuration.MaxPurgesPerTimerPop)
+
+		log.Printf("cache.len = %v cacheItemsPurged = %v", cache.len(), cacheItemsPurged)
+	}
+}
+
+func (cache *cache) start() {
+	log.Printf("cache.start")
+
+	go cache.runPeriodicTimer()
 }

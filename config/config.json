@@ -1,69 +1,13 @@
 {
-  "listenAddress": {
-    "host": "",
-    "port": "10053"
+  "metricsConfiguration": {
+    "timerIntervalSeconds": 10
   },
-  "blockedDomainConfigurations": [
-    {
-      "domain": "corp.target.com."
-    },
-    {
-      "domain": "dist.target.com."
-    },
-    {
-      "domain": "labs.target.com."
-    },
-    {
-      "domain": "hq.target.com."
-    },
-    {
-      "domain": "prod.target.com."
-    },
-    {
-      "domain": "stores.target.com."
-    },
-    {
-      "domain": "target.com.target.com."
-    },
-    {
-      "domain": "_udp.target.com."
-    },
-    {
-      "domain": "googlesyndication.com."
+  "dnsServerConfiguration": {
+    "listenAddress": {
+      "host": "",
+      "port": "10053"
     }
-  ],
-  "forwardDomainConfigurations": [
-    {
-      "domain": "domain.",
-      "namesToAddresses": [
-        {
-          "name": "apu2.domain.",
-          "ipAddress": "192.168.1.1"
-        },
-        {
-          "name": "raspberrypi.domain.",
-          "ipAddress": "192.168.1.100"
-        }
-      ],
-      "responseTTLSeconds": 60
-    }
-  ],
-  "reverseDomainConfigurations": [
-    {
-      "domain": "1.168.192.in-addr.arpa.",
-      "addressesToNames": [
-        {
-          "reverseAddress": "1.1.168.192.in-addr.arpa.",
-          "name": "apu2.domain."
-        },
-        {
-          "reverseAddress": "100.1.168.192.in-addr.arpa.",
-          "name": "raspberrypi.domain."
-        }
-      ],
-      "responseTTLSeconds": 60
-    }
-  ],
+  },
   "dohClientConfiguration": {
     "url": "https://cloudflare-dns.com/dns-query",
     "maxConcurrentRequests": 100,
@@ -72,11 +16,73 @@
   },
   "dnsProxyConfiguration": {
     "clampMinTTLSeconds": 10,
-    "clampMaxTTLSeconds": 30
+    "clampMaxTTLSeconds": 30,
+    "blockedDomainConfigurations": [
+      {
+        "domain": "corp.target.com."
+      },
+      {
+        "domain": "dist.target.com."
+      },
+      {
+        "domain": "labs.target.com."
+      },
+      {
+        "domain": "hq.target.com."
+      },
+      {
+        "domain": "prod.target.com."
+      },
+      {
+        "domain": "stores.target.com."
+      },
+      {
+        "domain": "target.com.target.com."
+      },
+      {
+        "domain": "_udp.target.com."
+      },
+      {
+        "domain": "googlesyndication.com."
+      }
+    ],
+    "forwardDomainConfigurations": [
+      {
+        "domain": "domain.",
+        "namesToAddresses": [
+          {
+            "name": "apu2.domain.",
+            "ipAddress": "192.168.1.1"
+          },
+          {
+            "name": "raspberrypi.domain.",
+            "ipAddress": "192.168.1.100"
+          }
+        ],
+        "responseTTLSeconds": 60
+      }
+    ],
+    "reverseDomainConfigurations": [
+      {
+        "domain": "1.168.192.in-addr.arpa.",
+        "addressesToNames": [
+          {
+            "reverseAddress": "1.1.168.192.in-addr.arpa.",
+            "name": "apu2.domain."
+          },
+          {
+            "reverseAddress": "100.1.168.192.in-addr.arpa.",
+            "name": "raspberrypi.domain."
+          }
+        ],
+        "responseTTLSeconds": 60
+      }
+    ]
   },
   "cacheConfiguration": {
     "maxSize": 20000,
-    "maxPurgesPerTimerPop": 100
+    "maxPurgesPerTimerPop": 100,
+    "timerIntervalSeconds": 10
   },
   "prefetchConfiguration": {
     "maxCacheSize": 10000,
@@ -84,7 +90,6 @@
     "sleepIntervalSeconds": 10,
     "maxCacheEntryAgeSeconds": 10
   },
-  "timerIntervalSeconds": 10,
   "pprofConfiguration": {
     "enabled": true,
     "listenAddress": "127.0.0.1:10054"

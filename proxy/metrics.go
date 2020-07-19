@@ -2,8 +2,10 @@ package proxy
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/miekg/dns"
 )
@@ -27,6 +29,7 @@ func (metricValue *metricValue) loadCount() uint64 {
 }
 
 type metrics struct {
+	configuration            *MetricsConfiguration
 	blockedValue             metricValue
 	cacheHitsValue           metricValue
 	cacheMissesValue         metricValue
@@ -37,8 +40,10 @@ type metrics struct {
 	rrTypeMetricsMap         sync.Map
 }
 
-func newMetrics() *metrics {
-	return &metrics{}
+func newMetrics(configuration *MetricsConfiguration) *metrics {
+	return &metrics{
+		configuration: configuration,
+	}
 }
 
 func (metrics *metrics) incrementBlocked() {
@@ -153,4 +158,20 @@ func (metrics *metrics) String() string {
 		metrics.blocked(), metrics.cacheHits(), metrics.cacheMisses(), metrics.prefetchRequests(),
 		metrics.dohClientErrors(), metrics.writeResponseErrors(),
 		metrics.rcodeMetricsMapSnapshot(), metrics.rrTypeMetricsMapSnapshot())
+}
+
+func (metrics *metrics) runPeriodicTimer() {
+	ticker := time.NewTicker(time.Duration(metrics.configuration.TimerIntervalSeconds) * time.Second)
+
+	for {
+		<-ticker.C
+
+		log.Printf("metrics: %v", metrics)
+	}
+}
+
+func (metrics *metrics) start() {
+	log.Printf("metrics.start")
+
+	go metrics.runPeriodicTimer()
 }
