@@ -12,7 +12,7 @@
     "url": "https://cloudflare-dns.com/dns-query",
     "maxConcurrentRequests": 100,
     "semaphoreAcquireTimeoutMilliseconds": 100,
-    "requestTimeoutMilliseconds": 2000
+    "requestTimeoutMilliseconds": 4000
   },
   "dnsProxyConfiguration": {
     "clampMinTTLSeconds": 300,
