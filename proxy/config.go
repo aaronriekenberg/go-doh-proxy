@@ -18,11 +18,6 @@ type DNSServerConfiguration struct {
 	ListenAddress HostAndPort `json:"listenAddress"`
 }
 
-// BlockedDomainConfiguration is the configuration for a blocked domain.
-type BlockedDomainConfiguration struct {
-	Domain string `json:"domain"`
-}
-
 // HostAndPort is a host and port.
 type HostAndPort struct {
 	Host string `json:"host"`
@@ -62,9 +57,9 @@ type ReverseDomainConfiguration struct {
 
 // DNSProxyConfiguration is the proxy configuration.
 type DNSProxyConfiguration struct {
-	BlockedDomainConfigurations []BlockedDomainConfiguration `json:"blockedDomainConfigurations"`
 	ForwardDomainConfigurations []ForwardDomainConfiguration `json:"forwardDomainConfigurations"`
 	ReverseDomainConfigurations []ReverseDomainConfiguration `json:"reverseDomainConfigurations"`
+	BlockedDomainsFile          string                       `json:"blockedDomainsFile"`
 	ClampMinTTLSeconds          uint32                       `json:"clampMinTTLSeconds"`
 	ClampMaxTTLSeconds          uint32                       `json:"clampMaxTTLSeconds"`
 }

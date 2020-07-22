@@ -17,32 +17,6 @@
   "dnsProxyConfiguration": {
     "clampMinTTLSeconds": 300,
     "clampMaxTTLSeconds": 3600,
-    "blockedDomainConfigurations": [
-      {
-        "domain": "corp.target.com."
-      },
-      {
-        "domain": "dist.target.com."
-      },
-      {
-        "domain": "labs.target.com."
-      },
-      {
-        "domain": "hq.target.com."
-      },
-      {
-        "domain": "prod.target.com."
-      },
-      {
-        "domain": "stores.target.com."
-      },
-      {
-        "domain": "target.com.target.com."
-      },
-      {
-        "domain": "_udp.target.com."
-      }
-    ],
     "forwardDomainConfigurations": [
       {
         "domain": "domain.",
@@ -74,7 +48,8 @@
         ],
         "responseTTLSeconds": 60
       }
-    ]
+    ],
+    "blockedDomainsFile": "./blocklist.txt"
   },
   "cacheConfiguration": {
     "maxSize": 20000,
