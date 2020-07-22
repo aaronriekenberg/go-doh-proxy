@@ -367,9 +367,11 @@ func (dnsProxy *dnsProxy) createServeMux() *dns.ServeMux {
 			if len(blockedDomain) == 0 {
 				continue
 			}
-
 			dnsServeMux.HandleFunc(blockedDomain, blockedHandler)
 			numBlockedDomains++
+		}
+		if err := scanner.Err(); err != nil {
+			log.Fatalf("BlockedDomainsFile scanner error: %v", err)
 		}
 		log.Printf("numBlockedDomains %v", numBlockedDomains)
 	}
