@@ -49,7 +49,7 @@
         "responseTTLSeconds": 60
       }
     ],
-    "blockedDomainsFile": "./blocklist.txt"
+    "blockedDomainsFile": "./blocklist/blocklist.txt"
   },
   "cacheConfiguration": {
     "maxSize": 20000,

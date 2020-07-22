@@ -1,16 +1,18 @@
 #!/bin/sh
 
-rm -f blocklist.txt
+BLOCKLIST='blocklist/blocklist.txt'
 
-echo 'corp.target.com' >> blocklist.txt
-echo 'dist.target.com' >> blocklist.txt
-echo 'labs.target.com' >> blocklist.txt
-echo 'hq.target.com' >> blocklist.txt
-echo 'prod.target.com' >> blocklist.txt
-echo 'stores.target.com' >> blocklist.txt
-echo 'target.com.target.com' >> blocklist.txt
-echo '_udp.target.com' >> blocklist.txt
+rm -f $BLOCKLIST
 
-curl --silent 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' | grep '^0\.0\.0\.0' | sort -u | awk '{print $2}' >> blocklist.txt
+echo 'corp.target.com' >> $BLOCKLIST
+echo 'dist.target.com' >> $BLOCKLIST
+echo 'labs.target.com' >> $BLOCKLIST
+echo 'hq.target.com' >> $BLOCKLIST
+echo 'prod.target.com' >> $BLOCKLIST
+echo 'stores.target.com' >> $BLOCKLIST
+echo 'target.com.target.com' >> $BLOCKLIST
+echo '_udp.target.com' >> $BLOCKLIST
 
-wc -l blocklist.txt
+curl --silent 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' | grep '^0\.0\.0\.0' | sort -u | awk '{print $2}' >> $BLOCKLIST
+
+wc -l $BLOCKLIST
