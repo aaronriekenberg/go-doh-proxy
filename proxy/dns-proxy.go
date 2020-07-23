@@ -1,11 +1,9 @@
 package proxy
 
 import (
-	"bufio"
 	"context"
 	"log"
 	"net"
-	"os"
 	"strings"
 	"time"
 
@@ -352,28 +350,7 @@ func (dnsProxy *dnsProxy) createServeMux() *dns.ServeMux {
 
 	if len(dnsProxy.configuration.DNSProxyConfiguration.BlockedDomainsFile) > 0 {
 		blockedHandler := dnsProxy.createBlockedDomainHandlerFunc()
-
-		log.Printf("reading BlockedDomainsFile %q", dnsProxy.configuration.DNSProxyConfiguration.BlockedDomainsFile)
-		file, err := os.Open(dnsProxy.configuration.DNSProxyConfiguration.BlockedDomainsFile)
-		if err != nil {
-			log.Fatalf("error reading BlockedDomainsFile: %v", err)
-		}
-		defer file.Close()
-
-		numBlockedDomains := 0
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			blockedDomain := strings.TrimSpace(scanner.Text())
-			if len(blockedDomain) == 0 {
-				continue
-			}
-			dnsServeMux.HandleFunc(blockedDomain, blockedHandler)
-			numBlockedDomains++
-		}
-		if err := scanner.Err(); err != nil {
-			log.Fatalf("BlockedDomainsFile scanner error: %v", err)
-		}
-		log.Printf("numBlockedDomains %v", numBlockedDomains)
+		getBlockedDomains(dnsProxy.configuration.DNSProxyConfiguration.BlockedDomainsFile, dnsServeMux, blockedHandler)
 	}
 
 	return dnsServeMux
