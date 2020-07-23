@@ -42,7 +42,7 @@ func installHandlersForBlockedDomains(blockedDomainsFile string, serveMux *dns.S
 	// would like to use dns.ServeMux.match but it is not exported
 	domainIsAlreadyBlocked := func(domainName string) bool {
 		for off, end := 0, false; !end; off, end = dns.NextLabel(domainName, off) {
-			if blocked := alreadyBlocked[domainName[off:]]; blocked {
+			if alreadyBlocked[domainName[off:]] {
 				return true
 			}
 		}
