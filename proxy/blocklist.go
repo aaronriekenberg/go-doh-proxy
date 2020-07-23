@@ -10,7 +10,7 @@ import (
 	"github.com/miekg/dns"
 )
 
-func getBlockedDomains(blockedDomainsFile string, serveMux *dns.ServeMux, blockedDomainHandler dns.HandlerFunc) {
+func installHandlersForBlockedDomains(blockedDomainsFile string, serveMux *dns.ServeMux, blockedDomainHandler dns.HandlerFunc) {
 	log.Printf("reading BlockedDomainsFile %q", blockedDomainsFile)
 	file, err := os.Open(blockedDomainsFile)
 	if err != nil {

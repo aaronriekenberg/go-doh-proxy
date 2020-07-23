@@ -350,7 +350,7 @@ func (dnsProxy *dnsProxy) createServeMux() *dns.ServeMux {
 
 	if len(dnsProxy.configuration.DNSProxyConfiguration.BlockedDomainsFile) > 0 {
 		blockedHandler := dnsProxy.createBlockedDomainHandlerFunc()
-		getBlockedDomains(dnsProxy.configuration.DNSProxyConfiguration.BlockedDomainsFile, dnsServeMux, blockedHandler)
+		installHandlersForBlockedDomains(dnsProxy.configuration.DNSProxyConfiguration.BlockedDomainsFile, dnsServeMux, blockedHandler)
 	}
 
 	return dnsServeMux
