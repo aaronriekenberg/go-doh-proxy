@@ -6,7 +6,6 @@ prod.target.com
 stores.target.com
 target.com.target.com
 _udp.target.com
-0.0.0.0
 0.0.0.0.beeglivesex.com
 0.0.0.0.creative.hpyrdr.com
 0.0.0.0.hpyrdr.com
