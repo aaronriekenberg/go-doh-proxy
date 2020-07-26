@@ -43,8 +43,9 @@ func (dohJSONConverter *dohJSONConverter) decodeJSONResponse(request *dns.Msg, j
 
 	resp = new(dns.Msg)
 	resp.SetReply(request)
-
+	resp.RecursionAvailable = true
 	resp.Rcode = dohJSONResponse.Status
+
 	dohJSONConverter.metrics.recordRcodeMetric(dohJSONResponse.Status)
 
 	for i := range dohJSONResponse.Answer {
