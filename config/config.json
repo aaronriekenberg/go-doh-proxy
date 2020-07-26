@@ -9,7 +9,7 @@
     }
   },
   "dohClientConfiguration": {
-    "url": "https://cloudflare-dns.com/dns-query",
+    "url": "https://1.1.1.1/dns-query",
     "maxConcurrentRequests": 100,
     "semaphoreAcquireTimeoutMilliseconds": 100,
     "requestTimeoutMilliseconds": 4000
